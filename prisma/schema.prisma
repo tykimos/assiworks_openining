@@ -1,0 +1,35 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum RegistrationStatus {
+  ACTIVE
+  CANCELED
+}
+
+model Registration {
+  id          String             @id @default(cuid())
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  name        String
+  email       String
+  phone       String?
+  company     String?
+  role        String?
+  headcount   Int?
+  note        String?
+
+  status      RegistrationStatus @default(ACTIVE)
+  canceledAt  DateTime?
+
+  cancelToken String             @unique
+
+  @@index([email])
+  @@index([status])
+}
