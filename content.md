@@ -10,8 +10,9 @@ Welcome to AssiWorks
 Tool, Flow, Agent를 하나의 프레임워크에서 연결하여 조직 내의 업무를 자동화 및 효율화를 지원하는 경험을 소개합니다.
 
 ## session-details
+- Date|2026년 3월 3일
 - Time|14:00 - 17:00 (KST)
-- Place|서울 종로구 광화문 한국마이크로소프트 본사 13층
+- Place|서울 종로구 광화문 한국Microsoft 본사 13층
 - Seats|100명 한정
 
 ## agenda
