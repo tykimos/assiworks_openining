@@ -116,6 +116,11 @@ const applyCopyDeck = (copy) => {
       const [title = '', body = ''] = line.split('|').map((part) => part?.trim() ?? '');
       if (!title && !body) return;
       const article = document.createElement('article');
+      const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      article.classList.add('tile-card');
+      if (slug) {
+        article.classList.add(`tile-${slug}`);
+      }
       const heading = document.createElement('h3');
       heading.textContent = title;
       const paragraph = document.createElement('p');
