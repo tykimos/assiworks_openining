@@ -1,0 +1,9 @@
+{
+  "name": "assiworks_openining",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "node ./scripts/build.js",
+    "vercel-build": "npm run build"
+  }
+}
