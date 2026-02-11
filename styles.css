@@ -23,7 +23,7 @@ body {
   min-height: 100vh;
   background: var(--bg);
   color: var(--text);
-  padding: clamp(1rem, 2vw, 2.5rem);
+  padding: clamp(0.75rem, 2vw, 2rem);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -41,9 +41,9 @@ a {
 }
 
 .split {
-  margin: clamp(0.5rem, 2vw, 1.5rem) auto;
-  width: min(1100px, 90vw);
-  min-height: min(760px, calc(100vh - 200px));
+  margin: clamp(0.5rem, 2vw, 1.2rem) auto;
+  width: min(1040px, 88vw);
+  min-height: min(720px, calc(100vh - 220px));
   display: grid;
   grid-template-columns: 3fr 2fr;
   gap: 2rem;
@@ -52,26 +52,26 @@ a {
 
 .intro-panel,
 .register-panel {
-  border-radius: 36px;
-  padding: clamp(1.5rem, 4vw, 3rem);
+  border-radius: 32px;
+  padding: clamp(1.2rem, 3.5vw, 2.4rem);
   height: 100%;
 }
 
 .intro-panel {
-  background: linear-gradient(150deg, rgba(255, 255, 255, 0.8), rgba(236, 239, 255, 0.9));
-  box-shadow: 0 30px 60px rgba(70, 78, 133, 0.2);
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.85), rgba(236, 239, 255, 0.95));
+  box-shadow: 0 20px 45px rgba(70, 78, 133, 0.18);
   display: flex;
   flex-direction: column;
-  gap: 2rem;
+  gap: 1.5rem;
 }
 
 .intro-panel h1 {
-  margin: 0.4rem 0 1rem;
-  font-size: clamp(2rem, 4vw, 3rem);
+  margin: 0.3rem 0 0.8rem;
+  font-size: clamp(1.9rem, 3.8vw, 2.8rem);
 }
 
 .lead {
-  font-size: 1.1rem;
+  font-size: 1rem;
   color: #2f3362;
 }
 
@@ -84,7 +84,7 @@ a {
 
 .session-details {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 1rem;
   margin: 1.5rem 0 0.5rem;
 }
@@ -106,10 +106,10 @@ a {
 .agenda-list {
   list-style: none;
   padding: 0;
-  margin: 1rem 0 0;
+  margin: 0.8rem 0 0;
   display: flex;
   flex-wrap: wrap;
-  gap: 0.6rem;
+  gap: 0.5rem;
 }
 
 .agenda-list li {
@@ -156,30 +156,30 @@ a {
 
 .register-card {
   background: rgba(8, 11, 38, 0.85);
-  border-radius: 30px;
-  padding: clamp(1.5rem, 3vw, 2.5rem);
+  border-radius: 28px;
+  padding: clamp(1.2rem, 3vw, 2.2rem);
   color: #f5f6ff;
-  width: min(460px, 100%);
-  box-shadow: 0 20px 60px rgba(4, 6, 21, 0.6);
+  width: min(420px, 100%);
+  box-shadow: 0 18px 45px rgba(4, 6, 21, 0.5);
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
 }
 
 .register-card h2 {
-  margin: 0.3rem 0 0.8rem;
-  font-size: 2.3rem;
+  margin: 0.2rem 0 0.6rem;
+  font-size: 1.9rem;
 }
 
 .card-lead {
-  margin: 0 0 1.5rem;
+  margin: 0 0 1rem;
   color: rgba(255, 255, 255, 0.7);
 }
 
 .register-form {
   display: flex;
   flex-direction: column;
-  gap: 0.9rem;
+  gap: 0.75rem;
   margin-bottom: 0.5rem;
 }
 
@@ -198,24 +198,24 @@ label {
 input,
 textarea {
   width: 100%;
-  border-radius: 16px;
+  border-radius: 14px;
   border: 1px solid rgba(255, 255, 255, 0.15);
-  background: rgba(255, 255, 255, 0.05);
-  padding: 0.85rem 1rem;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 0.75rem 0.95rem;
   color: #fff;
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-family: inherit;
 }
 
 textarea {
   resize: vertical;
-  min-height: 70px;
+  min-height: 60px;
 }
 
 .primary {
   border: none;
   border-radius: 999px;
-  padding: 0.95rem 1.8rem;
+  padding: 0.85rem 1.6rem;
   font-weight: 600;
   background: linear-gradient(90deg, var(--primary), var(--primary-dark));
   color: white;
@@ -264,7 +264,7 @@ textarea {
 .footer {
   text-align: center;
   color: var(--muted);
-  margin-top: 1rem;
+  margin-top: 0.5rem;
   font-size: 0.9rem;
 }
 
