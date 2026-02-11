@@ -276,48 +276,6 @@ textarea {
   color: #ffbfbf;
 }
 
-.cancel-helper {
-  margin-top: auto;
-  padding-top: 1rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.15);
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.cancel-header h3 {
-  margin: 0 0 0.35rem;
-  font-size: 1.2rem;
-}
-
-.cancel-header p,
-.cancel-hint {
-  margin: 0;
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 0.9rem;
-  line-height: 1.4;
-}
-
-.cancel-form {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 0.8rem;
-}
-
-.cancel-form .field {
-  margin: 0;
-}
-
-.cancel-form button {
-  grid-column: 1 / -1;
-}
-
-.cancel-status {
-  min-height: 1.2rem;
-  font-size: 0.9rem;
-  color: #9bf3c0;
-}
-
 .footer {
   text-align: center;
   color: var(--muted);
@@ -353,6 +311,11 @@ textarea {
   background: rgba(99, 107, 255, 0.12);
   color: #363c7a;
   font-weight: 600;
+}
+
+.inline-link {
+  display: inline-block;
+  margin-top: 0.5rem;
 }
 
 .inline-link {

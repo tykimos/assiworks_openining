@@ -164,12 +164,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const registerForm = document.getElementById('register-form');
   const registerStatus = document.querySelector('.form-status');
-  const cancelForm = document.getElementById('cancel-form');
-  const cancelStatus = document.querySelector('.cancel-status');
   const cancelPageForm = document.getElementById('cancel-page-form');
   const cancelPageStatus = document.getElementById('cancel-page-status');
-  const cancelPanel = document.querySelector('.cancel-helper');
-  const cancelToggle = document.getElementById('toggle-cancel');
   const countdown = document.getElementById('countdown');
   const countdownTimeEl = countdown?.querySelector('.countdown__time');
   const targetDate = countdown?.dataset.target ? new Date(countdown.dataset.target) : null;
@@ -254,15 +250,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  const handleInlineCancel = async (event) => {
-    event.preventDefault();
-    if (!cancelForm || !cancelStatus) return;
-    const formData = new FormData(cancelForm);
-    const email = formData.get('email');
-    const token = formData.get('token');
-    await performCancel(email, token, cancelStatus);
-  };
-
   const handlePageCancel = async (event) => {
     event?.preventDefault();
     if (!cancelPageForm || !cancelPageStatus) return;
@@ -273,20 +260,7 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   registerForm?.addEventListener('submit', handleRegistrationSubmit);
-  cancelForm?.addEventListener('submit', handleInlineCancel);
   cancelPageForm?.addEventListener('submit', handlePageCancel);
-
-  cancelToggle?.addEventListener('click', () => {
-    if (!cancelPanel) return;
-    const isHidden = cancelPanel.hasAttribute('hidden');
-    if (isHidden) {
-      cancelPanel.removeAttribute('hidden');
-      cancelToggle.textContent = '취소 폼 닫기';
-    } else {
-      cancelPanel.setAttribute('hidden', '');
-      cancelToggle.textContent = '등록 취소하기';
-    }
-  });
 
   if (document.body.dataset.page === 'cancel') {
     const params = new URLSearchParams(window.location.search);
