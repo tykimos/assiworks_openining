@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AssiWorks 등록 취소</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body data-page="cancel">
+    <main class="cancel-page">
+      <section class="cancel-panel">
+        <p class="eyebrow">Registration Update</p>
+        <h1>등록 취소</h1>
+        <p>
+          초대 메일에 포함된 링크를 통해서도 취소할 수 있습니다. 링크가 동작하지 않는다면 아래 정보를 입력해주세요.
+        </p>
+        <form id="cancel-page-form" class="cancel-form">
+          <div class="field">
+            <label for="cancel-page-email">등록 이메일</label>
+            <input id="cancel-page-email" name="email" type="email" placeholder="you@email.com" required />
+          </div>
+          <div class="field">
+            <label for="cancel-page-token">취소 코드</label>
+            <input id="cancel-page-token" name="token" type="text" placeholder="취소 코드" required />
+          </div>
+          <button type="submit" class="primary">등록 취소</button>
+        </form>
+        <p class="cancel-status" id="cancel-page-status" role="status" aria-live="polite"></p>
+      </section>
+    </main>
+
+    <script src="script.js"></script>
+  </body>
+</html>

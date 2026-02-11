@@ -30,7 +30,7 @@
           <p class="eyebrow" data-md-key="register-eyebrow"></p>
           <h2 data-md-key="register-title"></h2>
           <p class="card-lead" data-md-key="register-lead"></p>
-          <form class="register-form">
+          <form class="register-form" id="register-form">
             <div class="field">
               <label for="email" data-md-key="form-email-label"></label>
               <input
@@ -77,6 +77,25 @@
             <button type="submit" class="primary" data-md-key="form-button"></button>
             <p class="form-status" role="status" aria-live="polite"></p>
           </form>
+          <div class="cancel-helper">
+            <div class="cancel-header">
+              <h3 data-md-key="cancel-title"></h3>
+              <p data-md-key="cancel-description"></p>
+            </div>
+            <form id="cancel-form" class="cancel-form">
+              <div class="field">
+                <label for="cancel-email" data-md-key="cancel-email-label"></label>
+                <input id="cancel-email" name="email" type="email" placeholder="you@email.com" required />
+              </div>
+              <div class="field">
+                <label for="cancel-token" data-md-key="cancel-token-label"></label>
+                <input id="cancel-token" name="token" type="text" placeholder="취소 코드" required />
+              </div>
+              <button type="submit" class="secondary" data-md-key="cancel-button"></button>
+            </form>
+            <p class="cancel-hint" data-md-key="cancel-hint"></p>
+            <p class="cancel-status" role="status" aria-live="polite"></p>
+          </div>
         </div>
       </section>
     </main>
@@ -86,6 +105,7 @@
         <img src="images/assiworks_logo.png" alt="AssiWorks logo" />
         <img src="images/aifactory_logo.png" alt="AI Factory logo" />
       </div>
+      <a class="footer-link" href="cancel.html">등록 취소 바로가기</a>
     </footer>
 
     <script src="script.js"></script>

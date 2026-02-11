@@ -145,11 +145,29 @@ const loadCopyDeck = async () => {
   }
 };
 
+const postJSON = async (url, payload) => {
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || data?.ok === false) {
+    const message = data?.message || data?.error || '요청 처리 중 오류가 발생했습니다.';
+    throw new Error(message);
+  }
+  return data;
+};
+
 document.addEventListener('DOMContentLoaded', () => {
   loadCopyDeck();
 
-  const form = document.querySelector('.register-form');
-  const status = document.querySelector('.form-status');
+  const registerForm = document.getElementById('register-form');
+  const registerStatus = document.querySelector('.form-status');
+  const cancelForm = document.getElementById('cancel-form');
+  const cancelStatus = document.querySelector('.cancel-status');
+  const cancelPageForm = document.getElementById('cancel-page-form');
+  const cancelPageStatus = document.getElementById('cancel-page-status');
   const countdown = document.getElementById('countdown');
   const countdownTimeEl = countdown?.querySelector('.countdown__time');
   const targetDate = countdown?.dataset.target ? new Date(countdown.dataset.target) : null;
@@ -188,14 +206,82 @@ document.addEventListener('DOMContentLoaded', () => {
     countdownInterval = setInterval(updateCountdown, 1000);
   }
 
-  if (!form || !status) return;
+  const setStatus = (element, message, isError = false) => {
+    if (!element) return;
+    element.textContent = message;
+    element.classList.toggle('form-error', Boolean(isError));
+  };
 
-  form.addEventListener('submit', (event) => {
+  const handleRegistrationSubmit = async (event) => {
     event.preventDefault();
-    const formData = new FormData(form);
-    const name = formData.get('name') || '게스트';
+    if (!registerForm || !registerStatus) return;
+    setStatus(registerStatus, '등록 요청을 처리 중입니다...');
 
-    status.textContent = `${name}님, 사전 등록 요청을 완료했습니다.`;
-    form.reset();
-  });
+    const formData = new FormData(registerForm);
+    const payload = {
+      email: formData.get('email'),
+      name: formData.get('name'),
+      company: formData.get('company'),
+      message: formData.get('message'),
+    };
+
+    try {
+      const result = await postJSON('/api/register', payload);
+      const nameValue = payload.name?.toString().trim() || '게스트';
+      setStatus(registerStatus, `${nameValue}님, 등록 요청을 완료했습니다. 이메일을 확인해주세요.`);
+      if (cancelStatus) {
+        cancelStatus.textContent = `취소 링크: ${result.cancelLink}`;
+      }
+      registerForm.reset();
+    } catch (error) {
+      setStatus(registerStatus, error.message || '등록에 실패했습니다.', true);
+    }
+  };
+
+  const performCancel = async (email, token, statusElement) => {
+    if (!email || !token) {
+      setStatus(statusElement, '이메일과 취소 코드를 모두 입력해주세요.', true);
+      return;
+    }
+    setStatus(statusElement, '취소 요청을 처리 중입니다...');
+    try {
+      await postJSON('/api/cancel', { email, token });
+      setStatus(statusElement, '등록 취소가 완료되었습니다.');
+    } catch (error) {
+      setStatus(statusElement, error.message || '취소 요청을 처리하지 못했습니다.', true);
+    }
+  };
+
+  const handleInlineCancel = async (event) => {
+    event.preventDefault();
+    if (!cancelForm || !cancelStatus) return;
+    const formData = new FormData(cancelForm);
+    const email = formData.get('email');
+    const token = formData.get('token');
+    await performCancel(email, token, cancelStatus);
+  };
+
+  const handlePageCancel = async (event) => {
+    event?.preventDefault();
+    if (!cancelPageForm || !cancelPageStatus) return;
+    const formData = new FormData(cancelPageForm);
+    const email = formData.get('email');
+    const token = formData.get('token');
+    await performCancel(email, token, cancelPageStatus);
+  };
+
+  registerForm?.addEventListener('submit', handleRegistrationSubmit);
+  cancelForm?.addEventListener('submit', handleInlineCancel);
+  cancelPageForm?.addEventListener('submit', handlePageCancel);
+
+  if (document.body.dataset.page === 'cancel') {
+    const params = new URLSearchParams(window.location.search);
+    const email = params.get('email');
+    const token = params.get('token');
+    if (email && token && cancelPageForm) {
+      cancelPageForm.email.value = email;
+      cancelPageForm.token.value = token;
+      performCancel(email, token, cancelPageStatus);
+    }
+  }
 });

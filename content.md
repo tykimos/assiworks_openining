@@ -10,7 +10,7 @@ Welcome to AssiWorks
 Tool, Flow, Agent를 하나의 프레임워크에서 연결하여 조직 내의 업무를 자동화 및 효율화를 지원하는 경험을 소개합니다.
 
 ## session-details
-- Time|14:00 - 18:00 (KST)
+- Time|14:00 - 17:00 (KST)
 - Place|서울 종로구 광화문 한국마이크로소프트 본사 13층
 - Seats|100명 한정
 
@@ -59,3 +59,21 @@ AssiWorks Lab
 
 ## form-button
 등록 요청
+
+## cancel-title
+등록 취소
+
+## cancel-description
+이메일로 받은 취소 링크가 없다면 아래에서 직접 취소 코드를 입력하세요.
+
+## cancel-email-label
+등록 이메일
+
+## cancel-token-label
+취소 코드
+
+## cancel-button
+등록 취소
+
+## cancel-hint
+취소 링크가 담긴 이메일은 발송까지 수 분이 걸릴 수 있습니다. 메일을 찾지 못했다면 스팸함도 확인해주세요.
