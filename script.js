@@ -150,18 +150,42 @@ const loadCopyDeck = async () => {
   }
 };
 
-const postJSON = async (url, payload) => {
-  const response = await fetch(url, {
+const API_FALLBACK_HOST = 'https://assiworks-openining.vercel.app';
+
+const sendJson = async (baseUrl, path, payload) => {
+  const endpoint = `${baseUrl}${path}`;
+  const response = await fetch(endpoint, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(payload),
   });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok || data?.ok === false) {
-    const message = data?.message || data?.error || '요청 처리 중 오류가 발생했습니다.';
-    throw new Error(message);
+  return { response, data };
+};
+
+const postJSON = async (path, payload) => {
+  const bases = [''];
+  const fallbackHost = API_FALLBACK_HOST;
+  const currentHost = window.location.origin;
+  if (!currentHost.startsWith(fallbackHost)) {
+    bases.push(fallbackHost);
   }
-  return data;
+
+  let lastError;
+  for (const base of bases) {
+    try {
+      const { response, data } = await sendJson(base, path, payload);
+      if (response.ok && data?.ok !== false) {
+        return data;
+      }
+      const message = data?.message || data?.error || `요청 처리 중 오류가 발생했습니다. (${response.status})`;
+      lastError = new Error(message);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError || new Error('요청 처리 중 오류가 발생했습니다.');
 };
 
 document.addEventListener('DOMContentLoaded', () => {
