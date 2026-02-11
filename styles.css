@@ -1,0 +1,267 @@
+:root {
+  --bg: linear-gradient(135deg, #f4f5ff 0%, #ebefff 45%, #e3eaff 100%);
+  --text: #111532;
+  --muted: #6a6f95;
+  --primary: #636bff;
+  --primary-dark: #404dff;
+  --card-light: rgba(255, 255, 255, 0.75);
+  --panel-dark: #080b26;
+  font-family: 'Pretendard', 'Inter', system-ui, -apple-system, BlinkMacSystemFont,
+    'Segoe UI', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  padding: clamp(1rem, 2vw, 2rem);
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.split {
+  margin: clamp(1rem, 3vw, 2.5rem) auto;
+  width: min(1200px, 100%);
+  display: grid;
+  grid-template-columns: minmax(360px, 1fr) minmax(320px, 0.9fr);
+  gap: 2rem;
+  align-items: start;
+}
+
+.intro-panel,
+.register-panel {
+  border-radius: 36px;
+  padding: clamp(1.5rem, 4vw, 3rem);
+  height: fit-content;
+  align-self: stretch;
+}
+
+.intro-panel {
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.8), rgba(236, 239, 255, 0.9));
+  box-shadow: 0 30px 60px rgba(70, 78, 133, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.intro-panel h1 {
+  margin: 0.4rem 0 1rem;
+  font-size: clamp(2rem, 4vw, 3rem);
+}
+
+.lead {
+  font-size: 1.1rem;
+  color: #2f3362;
+}
+
+.eyebrow {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.session-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+  margin: 1.5rem 0 0.5rem;
+}
+
+.session-details .label {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #8e92ba;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.session-details .value {
+  margin: 0.3rem 0 0;
+  font-weight: 600;
+  font-size: 1.05rem;
+}
+
+.agenda-list {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.agenda-list li {
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  background: rgba(99, 107, 255, 0.12);
+  color: #363c7a;
+  font-weight: 600;
+}
+
+.copy-error {
+  margin: 0 0 1rem;
+  padding: 0.65rem 1rem;
+  border-radius: 16px;
+  background: #fff5d9;
+  color: #8a5200;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.intro-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
+.intro-tiles article {
+  background: var(--card-light);
+  border-radius: 24px;
+  padding: 1.4rem;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.4);
+}
+
+.intro-tiles h3 {
+  margin: 0 0 0.6rem;
+}
+
+.register-panel {
+  background: radial-gradient(circle at 20% 0%, rgba(60, 65, 255, 0.4), rgba(3, 4, 19, 0.95));
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.register-card {
+  background: rgba(8, 11, 38, 0.85);
+  border-radius: 30px;
+  padding: clamp(1.5rem, 3vw, 2.5rem);
+  color: #f5f6ff;
+  width: min(420px, 100%);
+  box-shadow: 0 20px 60px rgba(4, 6, 21, 0.6);
+}
+
+.register-card h2 {
+  margin: 0.3rem 0 0.8rem;
+  font-size: 2.3rem;
+}
+
+.card-lead {
+  margin: 0 0 1.5rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.register-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+label {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+input,
+textarea {
+  width: 100%;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 0.85rem 1rem;
+  color: #fff;
+  font-size: 1rem;
+  font-family: inherit;
+}
+
+textarea {
+  resize: vertical;
+  min-height: 70px;
+}
+
+.primary {
+  border: none;
+  border-radius: 999px;
+  padding: 0.95rem 1.8rem;
+  font-weight: 600;
+  background: linear-gradient(90deg, var(--primary), var(--primary-dark));
+  color: white;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 15px 35px rgba(74, 85, 255, 0.35);
+}
+
+.form-status {
+  min-height: 1.2rem;
+  color: #9bf3c0;
+  margin: 0.3rem 0 0;
+}
+
+.footer {
+  text-align: center;
+  color: var(--muted);
+  margin-top: 2rem;
+  font-size: 0.9rem;
+}
+
+.footer-logos {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.footer-logos img {
+  height: 26px;
+  width: auto;
+  max-width: 140px;
+  object-fit: contain;
+  flex: 0 0 auto;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.2));
+}
+
+@media (max-width: 900px) {
+  body {
+    padding: 1rem;
+  }
+
+  .split {
+    grid-template-columns: 1fr;
+  }
+
+  .intro-panel,
+  .register-panel {
+    padding: 2rem;
+  }
+
+}

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AssiWorks Opening Event</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="split" id="intro">
+      <section class="intro-panel">
+        <div>
+          <p class="eyebrow" data-md-key="intro-eyebrow"></p>
+          <h1 data-md-key="intro-title"></h1>
+          <p class="lead" data-md-key="intro-lead"></p>
+          <div class="session-details" data-md-list="session-details"></div>
+          <ul class="agenda-list" data-md-list="agenda"></ul>
+        </div>
+        <div class="intro-tiles" data-md-tiles="intro-tiles"></div>
+      </section>
+
+      <section class="register-panel" id="register">
+        <div class="register-card">
+          <p class="eyebrow" data-md-key="register-eyebrow"></p>
+          <h2 data-md-key="register-title"></h2>
+          <p class="card-lead" data-md-key="register-lead"></p>
+          <form class="register-form">
+            <div class="field">
+              <label for="email" data-md-key="form-email-label"></label>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                placeholder=""
+                data-md-placeholder="form-email-placeholder"
+                required
+              />
+            </div>
+            <div class="field">
+              <label for="name" data-md-key="form-name-label"></label>
+              <input
+                id="name"
+                name="name"
+                type="text"
+                placeholder=""
+                data-md-placeholder="form-name-placeholder"
+                required
+              />
+            </div>
+            <div class="field">
+              <label for="company" data-md-key="form-company-label"></label>
+              <textarea
+                id="company"
+                name="company"
+                rows="2"
+                placeholder=""
+                data-md-placeholder="form-company-placeholder"
+                required
+              ></textarea>
+            </div>
+            <div class="field">
+              <label for="message" data-md-key="form-message-label"></label>
+              <textarea
+                id="message"
+                name="message"
+                rows="3"
+                placeholder=""
+                data-md-placeholder="form-message-placeholder"
+              ></textarea>
+            </div>
+            <button type="submit" class="primary" data-md-key="form-button"></button>
+            <p class="form-status" role="status" aria-live="polite"></p>
+          </form>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-logos">
+        <img src="images/assiworks_logo.png" alt="AssiWorks logo" />
+        <img src="images/aifactory_logo.png" alt="AI Factory logo" />
+      </div>
+    </footer>
+
+    <script src="script.js"></script>
+  </body>
+</html>
