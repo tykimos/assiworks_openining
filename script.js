@@ -168,6 +168,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const cancelStatus = document.querySelector('.cancel-status');
   const cancelPageForm = document.getElementById('cancel-page-form');
   const cancelPageStatus = document.getElementById('cancel-page-status');
+  const cancelPanel = document.querySelector('.cancel-helper');
+  const cancelToggle = document.getElementById('toggle-cancel');
   const countdown = document.getElementById('countdown');
   const countdownTimeEl = countdown?.querySelector('.countdown__time');
   const targetDate = countdown?.dataset.target ? new Date(countdown.dataset.target) : null;
@@ -273,6 +275,18 @@ document.addEventListener('DOMContentLoaded', () => {
   registerForm?.addEventListener('submit', handleRegistrationSubmit);
   cancelForm?.addEventListener('submit', handleInlineCancel);
   cancelPageForm?.addEventListener('submit', handlePageCancel);
+
+  cancelToggle?.addEventListener('click', () => {
+    if (!cancelPanel) return;
+    const isHidden = cancelPanel.hasAttribute('hidden');
+    if (isHidden) {
+      cancelPanel.removeAttribute('hidden');
+      cancelToggle.textContent = '취소 폼 닫기';
+    } else {
+      cancelPanel.setAttribute('hidden', '');
+      cancelToggle.textContent = '등록 취소하기';
+    }
+  });
 
   if (document.body.dataset.page === 'cancel') {
     const params = new URLSearchParams(window.location.search);

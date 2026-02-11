@@ -244,6 +244,21 @@ textarea {
   color: white;
 }
 
+.ghost-button {
+  border: none;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.8);
+  border-radius: 999px;
+  padding: 0.65rem 1.3rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.ghost-button:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
 .form-status {
   min-height: 1.2rem;
   color: #9bf3c0;
@@ -338,6 +353,11 @@ textarea {
   background: rgba(99, 107, 255, 0.12);
   color: #363c7a;
   font-weight: 600;
+}
+
+.inline-link {
+  display: inline-block;
+  margin-top: 0.5rem;
 }
 
 .cancel-page {
