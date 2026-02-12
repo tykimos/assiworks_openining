@@ -376,18 +376,17 @@ textarea {
 .tile-loop::after {
   content: '';
   position: absolute;
-  inset: -25%;
-  background: radial-gradient(circle at 30% 30%, rgba(109, 139, 255, 0.35), transparent 60%),
-    radial-gradient(circle at 70% 60%, rgba(255, 194, 255, 0.35), transparent 60%);
-  filter: blur(10px);
-  opacity: 0.5;
-  animation: loopGlow 12s ease-in-out infinite;
-  mix-blend-mode: screen;
+  inset: -30%;
+  background: linear-gradient(140deg, rgba(110, 138, 255, 0.25), transparent 60%),
+    radial-gradient(circle at 70% 30%, rgba(255, 197, 255, 0.25), transparent 65%);
+  opacity: 0.65;
+  mix-blend-mode: multiply;
+  animation: loopShift 18s linear infinite;
 }
 
 .tile-loop::after {
-  animation-delay: -6s;
-  transform: rotate(45deg);
+  animation-delay: -9s;
+  transform: rotate(30deg);
   opacity: 0.4;
 }
 
@@ -397,17 +396,17 @@ textarea {
   color: inherit;
 }
 
-@keyframes loopGlow {
+@keyframes loopShift {
   0% {
-    transform: translate(-8%, -6%) scale(1);
-    opacity: 0.35;
+    transform: translate(-12%, -8%) scale(1);
+    opacity: 0.4;
   }
   50% {
-    transform: translate(8%, 6%) scale(1.08);
-    opacity: 0.7;
+    transform: translate(10%, 8%) scale(1.05);
+    opacity: 0.75;
   }
   100% {
-    transform: translate(-6%, 8%) scale(1);
+    transform: translate(-10%, 6%) scale(1);
     opacity: 0.4;
   }
 }
