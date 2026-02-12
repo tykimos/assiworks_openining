@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const { getSupabaseClient } = require('./_supabase');
 const { sendRegistrationEmail } = require('./_mailer');
+const { applyCors } = require('./_cors');
 
 const getOrigin = (req) => {
   const host = req.headers['x-forwarded-host'] || req.headers.host || '';
@@ -11,6 +12,9 @@ const getOrigin = (req) => {
 };
 
 module.exports = async (req, res) => {
+  if (applyCors(req, res)) {
+    return;
+  }
   if (req.method !== 'POST') {
     return res.status(405).json({ ok: false, message: '허용되지 않은 메서드입니다.' });
   }
