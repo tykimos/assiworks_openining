@@ -184,6 +184,56 @@ a {
   color: rgba(255, 255, 255, 0.7);
 }
 
+.seat-progress {
+  margin: -0.2rem 0 0.25rem;
+  padding: 0.7rem 0.8rem;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.seat-progress__meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.7rem;
+  margin-bottom: 0.45rem;
+}
+
+.seat-progress__label {
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.58);
+}
+
+.seat-progress__count {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.seat-progress__track {
+  position: relative;
+  height: 9px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.13);
+}
+
+.seat-progress__fill {
+  display: block;
+  width: 0%;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #7c86ff, #5f6aff);
+  transition: width 0.35s ease;
+}
+
+.seat-progress.is-near-full .seat-progress__fill {
+  background: linear-gradient(90deg, #f5b051, #ff7a6f);
+}
+
 .register-form {
   display: flex;
   flex-direction: column;

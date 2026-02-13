@@ -29,6 +29,23 @@
         <div class="register-card">
           <p class="eyebrow" data-md-key="register-eyebrow"></p>
           <h2 data-md-key="register-title"></h2>
+          <section class="seat-progress" aria-live="polite">
+            <div class="seat-progress__meta">
+              <span class="seat-progress__label">좌석 현황</span>
+              <strong class="seat-progress__count" id="seat-progress-count">확인 중...</strong>
+            </div>
+            <div
+              class="seat-progress__track"
+              id="seat-progress-track"
+              role="progressbar"
+              aria-label="사전 등록 좌석 사용 현황"
+              aria-valuemin="0"
+              aria-valuemax="100"
+              aria-valuenow="0"
+            >
+              <span class="seat-progress__fill" id="seat-progress-fill"></span>
+            </div>
+          </section>
           <p class="card-lead" data-md-key="register-lead"></p>
           <form class="register-form" id="register-form">
             <div class="field">

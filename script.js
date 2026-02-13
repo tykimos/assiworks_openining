@@ -160,6 +160,7 @@ const loadCopyDeck = async () => {
 };
 
 const API_FALLBACK_HOST = 'https://assiworks-openining.vercel.app';
+const DEFAULT_SEAT_CAPACITY = 100;
 
 const sendJson = async (baseUrl, path, method, payload) => {
   const endpoint = `${baseUrl}${path}`;
@@ -213,6 +214,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   const countdown = document.getElementById('countdown');
   const countdownTimeEl = countdown?.querySelector('.countdown__time');
   const targetDate = countdown?.dataset.target ? new Date(countdown.dataset.target) : null;
+  const seatProgress = document.querySelector('.seat-progress');
+  const seatProgressFill = document.getElementById('seat-progress-fill');
+  const seatProgressTrack = document.getElementById('seat-progress-track');
+  const seatProgressCount = document.getElementById('seat-progress-count');
 
   const formatTime = (value) => value.toString().padStart(2, '0');
 
@@ -247,11 +252,49 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (targetDate) {
     countdownInterval = setInterval(updateCountdown, 1000);
   }
+  setSeatProgressFallback();
+  refreshSeatProgress();
 
   const setStatus = (element, message, isError = false) => {
     if (!element) return;
     element.textContent = message;
     element.classList.toggle('form-error', Boolean(isError));
+  };
+
+  const clampPercent = (value) => Math.max(0, Math.min(100, value));
+
+  const updateSeatProgress = ({ capacity = DEFAULT_SEAT_CAPACITY, activeCount = 0 } = {}) => {
+    if (!seatProgress || !seatProgressFill || !seatProgressTrack || !seatProgressCount) return;
+    const safeCapacity = Number(capacity) > 0 ? Number(capacity) : DEFAULT_SEAT_CAPACITY;
+    const safeActiveCount = Math.max(0, Number(activeCount) || 0);
+    const usedSeats = Math.min(safeActiveCount, safeCapacity);
+    const remainingSeats = Math.max(0, safeCapacity - usedSeats);
+    const usedPercent = clampPercent((usedSeats / safeCapacity) * 100);
+
+    seatProgressFill.style.width = `${usedPercent}%`;
+    seatProgressTrack.setAttribute('aria-valuemax', String(safeCapacity));
+    seatProgressTrack.setAttribute('aria-valuenow', String(usedSeats));
+    seatProgressCount.textContent = `${remainingSeats}자리 남음 · ${usedSeats}/${safeCapacity}`;
+    seatProgress.classList.toggle('is-near-full', usedPercent >= 80);
+  };
+
+  const setSeatProgressFallback = () => {
+    if (!seatProgressCount) return;
+    seatProgressCount.textContent = '좌석 현황을 확인 중입니다.';
+  };
+
+  const refreshSeatProgress = async () => {
+    if (!seatProgress) return;
+    try {
+      const seatStatus = await getJSON('/api/seat-status');
+      updateSeatProgress({
+        capacity: seatStatus?.capacity,
+        activeCount: seatStatus?.activeCount,
+      });
+    } catch (error) {
+      console.warn('Seat status fetch failed', error);
+      setSeatProgressFallback();
+    }
   };
 
   const formatCancelDateTime = (value) => {
@@ -409,6 +452,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         cancelPageStatus.textContent = `취소 링크: ${result.cancelLink}`;
       }
       registerForm.reset();
+      refreshSeatProgress();
     } catch (error) {
       const responsePayload = error?.payload || {};
       const isRegistered = Boolean(responsePayload?.registered);
