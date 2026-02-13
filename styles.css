@@ -570,48 +570,77 @@ textarea {
 .intro-tiles article.tile-loop {
   position: relative;
   overflow: hidden;
+  isolation: isolate;
   color: #f3f6ff;
-  background: linear-gradient(145deg, rgba(40, 45, 92, 0.62), rgba(21, 29, 67, 0.72));
-  border: 1px solid rgba(141, 156, 255, 0.2);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06), 0 20px 35px rgba(6, 10, 31, 0.32);
+  background: linear-gradient(145deg, rgba(24, 30, 74, 0.84), rgba(11, 17, 49, 0.9));
+  border: 1px solid rgba(126, 141, 255, 0.24);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05), 0 20px 35px rgba(5, 8, 28, 0.4);
 }
 
 .intro-tiles article.tile-loop::before,
 .intro-tiles article.tile-loop::after {
   content: '';
   position: absolute;
-  inset: -30%;
-  background: linear-gradient(140deg, rgba(110, 138, 255, 0.32), transparent 60%),
-    radial-gradient(circle at 70% 30%, rgba(184, 120, 255, 0.28), transparent 65%);
-  opacity: 0.74;
-  mix-blend-mode: screen;
-  animation: loopShift 18s linear infinite;
+  inset: -36%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.intro-tiles article.tile-loop::before {
+  background:
+    radial-gradient(circle at 20% 25%, rgba(118, 146, 255, 0.42), transparent 56%),
+    radial-gradient(circle at 74% 72%, rgba(186, 122, 255, 0.3), transparent 52%);
+  filter: blur(1px);
+  animation: loopShift 8.5s ease-in-out infinite alternate;
 }
 
 .intro-tiles article.tile-loop::after {
-  animation-delay: -9s;
-  transform: rotate(30deg);
-  opacity: 0.4;
+  background: conic-gradient(
+    from 180deg at 50% 50%,
+    rgba(133, 162, 255, 0.2),
+    rgba(80, 109, 234, 0.08),
+    rgba(184, 128, 255, 0.2),
+    rgba(133, 162, 255, 0.2)
+  );
+  opacity: 0.75;
+  mix-blend-mode: screen;
+  animation: loopShiftAlt 10s linear infinite;
 }
 
 .intro-tiles article.tile-loop h3,
 .intro-tiles article.tile-loop p {
   position: relative;
+  z-index: 1;
   color: inherit;
 }
 
 @keyframes loopShift {
   0% {
-    transform: translate(-12%, -8%) scale(1);
-    opacity: 0.4;
+    transform: translate3d(-14%, -10%, 0) scale(1) rotate(-4deg);
+    opacity: 0.36;
   }
   50% {
-    transform: translate(10%, 8%) scale(1.05);
+    transform: translate3d(10%, 8%, 0) scale(1.08) rotate(3deg);
+    opacity: 0.72;
+  }
+  100% {
+    transform: translate3d(-7%, 11%, 0) scale(1.03) rotate(-2deg);
+    opacity: 0.42;
+  }
+}
+
+@keyframes loopShiftAlt {
+  0% {
+    transform: rotate(0deg) scale(1);
+    opacity: 0.46;
+  }
+  50% {
+    transform: rotate(180deg) scale(1.05);
     opacity: 0.75;
   }
   100% {
-    transform: translate(-10%, 6%) scale(1);
-    opacity: 0.4;
+    transform: rotate(360deg) scale(1);
+    opacity: 0.46;
   }
 }
 
