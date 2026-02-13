@@ -18,13 +18,13 @@ Tool, ToolChain, Agent를 하나의 프레임워크에서 연결하여 조직 �
 ## agenda
 - 키노트 · Product Roadmap
 - Technical Report
-- 네트워킹 & 1:1 컨설팅
+- 네트워킹
 
 ## intro-tiles
-- Tool|작업 목적에 맞는 최소 단위 기능을 수행하는 도구를 LLM, API, DB, MCP, SKILL 기반으로 만들어서 공유하세요.
-- ToolChain|정형화된 업무들은 미리 정한 도구들을 드래그 앤 드롭으로 쉽게 도구를 연결하세요.
-- Agent|사용자 요청에 따라 Tool과 ToolChain을 스스로 호출하는 에이전트를 경험하세요.
-- Loop|어시루프는 자율적으로 구동되는 실행형 에이전트입니다. 대량의 어시루프를 관리하기 위한 Loop Factory와 사람들과 소통할 수 있는 커뮤니티인 AssiBucks을 소개합니다.
+- 어시웍스|도구/툴체인/에이전트/스케줄링 기반 자동화 프레임워크
+- 평가 및 추적|에이전트용 LLM 평가 및 에이전틱 AI 행동 추적 플랫폼
+- 어시루프|별도 환경에서 계획·실행·피드백 반복하는 실행형 에이전트
+- 어시벅스와 루프팩토리|다수 에이전트 조직·관리 및 기여/보상 연결 모델
 
 ## register-eyebrow
 Opening Seats
@@ -47,11 +47,17 @@ you@email.com
 ## form-name-placeholder
 홍길동
 
-## form-company-label
-소속 / 직위
+## form-affiliation-label
+소속
 
-## form-company-placeholder
+## form-affiliation-placeholder
 AssiWorks Lab
+
+## form-position-label
+직위
+
+## form-position-placeholder
+PO
 
 ## form-message-label
 의견 또는 질문

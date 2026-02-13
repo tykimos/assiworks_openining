@@ -121,6 +121,15 @@ const applyCopyDeck = (copy) => {
       if (slug) {
         article.classList.add(`tile-${slug}`);
       }
+
+      const index = entry.value.indexOf(line);
+      console.log(index);
+
+      // 마지막 카드(어시벅스와 루프팩토리)에 애니메이션 배경 클래스 적용
+      if (index === entry.value.length - 2) {
+        article.classList.add('tile-loop');
+      }
+
       const heading = document.createElement('h3');
       heading.textContent = title;
       const paragraph = document.createElement('p');

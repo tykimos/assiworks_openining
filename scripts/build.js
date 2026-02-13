@@ -2,7 +2,7 @@ const fs = require("fs")
 const path = require("path")
 
 const distDir = path.join(process.cwd(), "dist")
-const assets = ["index.html", "cancel.html", "styles.css", "script.js", "content.md"]
+const assets = ["index.html", "cancel.html", "admin.html", "styles.css", "script.js", "admin.js", "content.md"]
 const folders = ["images"]
 
 const copyFile = (file) => {
