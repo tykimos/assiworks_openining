@@ -19,7 +19,7 @@ module.exports = async (req, res) => {
     return res.status(405).json({ ok: false, message: '허용되지 않은 메서드입니다.' });
   }
 
-  const { email, name, company, message } = req.body || {};
+  const { email, name, affiliation, position, company, message } = req.body || {};
   if (!email || !name) {
     return res.status(400).json({ ok: false, message: '이름과 이메일을 모두 입력해주세요.' });
   }
@@ -27,13 +27,16 @@ module.exports = async (req, res) => {
   try {
     const supabase = await getSupabaseClient();
     const cancelToken = crypto.randomBytes(24).toString('hex');
+    const normalizedAffiliation = affiliation || company || null;
+    const normalizedPosition = position || null;
 
     const { error } = await supabase
       .from('registrations')
       .insert({
         email,
         name,
-        company: company || null,
+        affiliation: normalizedAffiliation,
+        position: normalizedPosition,
         note: message || null,
         cancel_token: cancelToken,
       })
@@ -51,12 +54,34 @@ module.exports = async (req, res) => {
     )}`;
 
     try {
-      await sendRegistrationEmail({ to: email, name, cancelLink });
+      const emailResult = await sendRegistrationEmail({ to: email, name, cancelLink });
+      return res.status(200).json({
+        ok: true,
+        registered: true,
+        cancelToken,
+        cancelLink,
+        email: {
+          success: true,
+          endpoint: emailResult?.endpoint || null,
+          results: emailResult?.mailResults || [],
+        },
+      });
     } catch (emailError) {
       console.error('Email send error', emailError);
+      return res.status(502).json({
+        ok: false,
+        registered: true,
+        cancelToken,
+        cancelLink,
+        email: {
+          success: false,
+          endpoint: emailError?.endpoint || null,
+          results: emailError?.mailResults || [],
+          error: emailError?.message || null,
+        },
+        message: '등록은 완료됐지만 확인 이메일 전송에 실패했습니다. 잠시 후 다시 시도해주세요.',
+      });
     }
-
-    return res.status(200).json({ ok: true, cancelToken, cancelLink });
   } catch (error) {
     console.error('Registration error', error);
     return res.status(500).json({ ok: false, message: '서버 오류가 발생했습니다.' });

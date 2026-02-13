@@ -54,15 +54,26 @@
               />
             </div>
             <div class="field">
-              <label for="company" data-md-key="form-company-label"></label>
-              <textarea
-                id="company"
-                name="company"
-                rows="2"
-                placeholder=""
-                data-md-placeholder="form-company-placeholder"
+              <label for="affiliation" data-md-key="form-affiliation-label">소속</label>
+              <input
+                id="affiliation"
+                name="affiliation"
+                type="text"
+                placeholder="AssiWorks Lab"
+                data-md-placeholder="form-affiliation-placeholder"
                 required
-              ></textarea>
+              />
+            </div>
+            <div class="field">
+              <label for="position" data-md-key="form-position-label">직위</label>
+              <input
+                id="position"
+                name="position"
+                type="text"
+                placeholder="PO"
+                data-md-placeholder="form-position-placeholder"
+                required
+              />
             </div>
             <div class="field">
               <label for="message" data-md-key="form-message-label"></label>
@@ -86,7 +97,10 @@
         <img src="images/assiworks_logo.png" alt="AssiWorks logo" />
         <img src="images/aifactory_logo.png" alt="AI Factory logo" />
       </div>
-      <a class="footer-link" href="cancel.html">등록 취소 바로가기</a>
+      <div class="footer-actions">
+        <a class="footer-link" href="cancel.html">등록 취소 바로가기</a>
+        <a class="footer-link" href="admin.html">관리</a>
+      </div>
     </footer>
 
     <script src="script.js"></script>
