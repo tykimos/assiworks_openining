@@ -252,8 +252,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (targetDate) {
     countdownInterval = setInterval(updateCountdown, 1000);
   }
-  setSeatProgressFallback();
-  refreshSeatProgress();
 
   const setStatus = (element, message, isError = false) => {
     if (!element) return;
@@ -296,6 +294,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       setSeatProgressFallback();
     }
   };
+
+  setSeatProgressFallback();
+  refreshSeatProgress();
 
   const formatCancelDateTime = (value) => {
     if (!value) return '';
