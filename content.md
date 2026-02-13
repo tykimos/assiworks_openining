@@ -7,7 +7,7 @@
 Welcome to AssiWorks
 
 ## intro-lead
-Tool, ToolChain, Agent를 하나의 프레임워크에서 연결하여 조직 내의 업무를 자동화 및 효율화를 지원하는 경험을 소개합니다.
+에이전트 시스템의 진화! Tool, ToolChain, Agent를 하나의 프레임워크에서 연결하여 조직 내의 업무를 자동화 및 효율화를 지원하는 경험을 소개합니다.
 
 ## session-details
 - Date|2026년 3월 3일
