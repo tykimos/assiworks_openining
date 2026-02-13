@@ -167,8 +167,7 @@ const requestJSON = async ({ path, method = 'POST', payload }) => {
   const bases = [''];
   const fallbackHost = API_FALLBACK_HOST;
   const currentHost = window.location.origin;
-  const isLocalhostOrigin = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(currentHost);
-  if (isLocalhostOrigin && !currentHost.startsWith(fallbackHost)) {
+  if (!currentHost.startsWith(fallbackHost)) {
     bases.push(fallbackHost);
   }
 
