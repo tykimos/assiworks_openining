@@ -31,6 +31,19 @@ const sendAdminRequest = async ({ method, path, token, payload }) => {
 };
 
 document.addEventListener('DOMContentLoaded', () => {
+  /* ============================================================
+     Sidebar toggle
+     ============================================================ */
+  const sidebarToggle = document.getElementById('sidebar-toggle');
+  const dashboardEl = document.getElementById('admin-dashboard-view');
+  const sidebarOpen = sessionStorage.getItem('sidebarOpen') !== 'false';
+  if (sidebarOpen) dashboardEl?.classList.add('sidebar-open');
+
+  sidebarToggle?.addEventListener('click', () => {
+    const isOpen = dashboardEl?.classList.toggle('sidebar-open');
+    sessionStorage.setItem('sidebarOpen', isOpen ? 'true' : 'false');
+  });
+
   const authForm = document.getElementById('admin-auth-form');
   const passwordInput = document.getElementById('admin-password');
   const authStatusEl = document.getElementById('admin-status');
@@ -811,6 +824,46 @@ document.addEventListener('DOMContentLoaded', () => {
       setStatus(dashboardStatusEl, error.message || '선택 삭제에 실패했습니다.', true);
       syncInvSelectionUI();
     }
+  });
+
+  /* ============================================================
+     Column resizing for tables
+     ============================================================ */
+  const initColumnResizers = () => {
+    document.querySelectorAll('.admin-table').forEach((table) => {
+      const ths = table.querySelectorAll('th');
+      ths.forEach((th) => {
+        if (th.querySelector('.col-resizer')) return;
+        const resizer = document.createElement('div');
+        resizer.className = 'col-resizer';
+        th.appendChild(resizer);
+
+        let startX, startW;
+        const onMouseMove = (e) => {
+          const diff = e.clientX - startX;
+          th.style.width = `${Math.max(40, startW + diff)}px`;
+        };
+        const onMouseUp = () => {
+          resizer.classList.remove('is-resizing');
+          document.removeEventListener('mousemove', onMouseMove);
+          document.removeEventListener('mouseup', onMouseUp);
+        };
+        resizer.addEventListener('mousedown', (e) => {
+          e.preventDefault();
+          startX = e.clientX;
+          startW = th.offsetWidth;
+          resizer.classList.add('is-resizing');
+          document.addEventListener('mousemove', onMouseMove);
+          document.addEventListener('mouseup', onMouseUp);
+        });
+      });
+    });
+  };
+
+  // Observe table mutations to attach resizers automatically.
+  const tableObserver = new MutationObserver(() => initColumnResizers());
+  document.querySelectorAll('.admin-table-wrap').forEach((wrap) => {
+    tableObserver.observe(wrap, { childList: true, subtree: true });
   });
 
   // Restore session if token exists from a previous page load.
