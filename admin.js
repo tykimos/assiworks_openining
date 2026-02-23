@@ -866,9 +866,24 @@ document.addEventListener('DOMContentLoaded', () => {
       const ths = Array.from(table.querySelectorAll('thead th'));
       if (ths.length === 0) return;
 
-      // Snapshot current auto-computed widths, then lock them with table-layout: fixed.
-      const widths = ths.map((th) => th.offsetWidth);
-      table.style.width = '100%';
+      // Use first data row cells to determine natural content widths.
+      const firstRow = table.querySelector('tbody tr');
+      const tds = firstRow ? Array.from(firstRow.children) : [];
+
+      // Temporarily remove fixed layout to measure natural widths.
+      table.style.tableLayout = 'auto';
+      table.style.width = 'auto';
+      ths.forEach((th) => { th.style.width = ''; });
+
+      const widths = ths.map((th, i) => {
+        const tdW = tds[i] ? tds[i].offsetWidth : 0;
+        return Math.max(th.offsetWidth, tdW);
+      });
+      const totalW = widths.reduce((s, w) => s + w, 0);
+
+      // Lock to fixed layout with measured widths.
+      table.style.tableLayout = 'fixed';
+      table.style.width = `${totalW}px`;
       ths.forEach((th, i) => { th.style.width = `${widths[i]}px`; });
       table.dataset.resizersReady = '1';
 
@@ -878,10 +893,12 @@ document.addEventListener('DOMContentLoaded', () => {
         resizer.className = 'col-resizer';
         th.appendChild(resizer);
 
-        let startX, startW;
+        let startX, startW, startTableW;
         const onMouseMove = (e) => {
           const diff = e.clientX - startX;
-          th.style.width = `${Math.max(36, startW + diff)}px`;
+          const newW = Math.max(36, startW + diff);
+          th.style.width = `${newW}px`;
+          table.style.width = `${startTableW + (newW - startW)}px`;
         };
         const onMouseUp = () => {
           resizer.classList.remove('is-resizing');
@@ -895,6 +912,7 @@ document.addEventListener('DOMContentLoaded', () => {
           e.stopPropagation();
           startX = e.clientX;
           startW = th.offsetWidth;
+          startTableW = table.offsetWidth;
           resizer.classList.add('is-resizing');
           document.body.style.cursor = 'col-resize';
           document.body.style.userSelect = 'none';

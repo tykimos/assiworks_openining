@@ -1127,7 +1127,7 @@ body[data-page='admin'] .admin-page {
 
 .admin-table {
   border-collapse: collapse;
-  table-layout: fixed;
+  width: 100%;
 }
 
 .admin-table th,
