@@ -866,20 +866,23 @@ document.addEventListener('DOMContentLoaded', () => {
       const ths = Array.from(table.querySelectorAll('thead th'));
       if (ths.length === 0) return;
 
-      // Use first data row cells to determine natural content widths.
+      // Use inline style widths from HTML if set, otherwise measure from first data row.
+      const wrapWidth = table.closest('.admin-table-wrap')?.clientWidth || table.offsetWidth;
       const firstRow = table.querySelector('tbody tr');
       const tds = firstRow ? Array.from(firstRow.children) : [];
 
       // Temporarily remove fixed layout to measure natural widths.
       table.style.tableLayout = 'auto';
       table.style.width = 'auto';
-      ths.forEach((th) => { th.style.width = ''; });
 
       const widths = ths.map((th, i) => {
+        // Prefer explicit width from HTML attribute.
+        const explicit = parseInt(th.style.width, 10);
+        if (explicit > 0) return explicit;
         const tdW = tds[i] ? tds[i].offsetWidth : 0;
         return Math.max(th.offsetWidth, tdW);
       });
-      const totalW = widths.reduce((s, w) => s + w, 0);
+      const totalW = Math.max(widths.reduce((s, w) => s + w, 0), wrapWidth);
 
       // Lock to fixed layout with measured widths.
       table.style.tableLayout = 'fixed';
