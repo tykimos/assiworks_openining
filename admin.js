@@ -535,8 +535,7 @@ document.addEventListener('DOMContentLoaded', () => {
     sessionStorage.setItem('adminToken', token);
     setStatus(authStatusEl, '등록 데이터를 불러오는 중입니다...');
     try {
-      await loadRegistrations();
-      await loadInvitations();
+      await Promise.all([loadRegistrations(), loadInvitations()]);
       showDashboard();
       switchView('analytics');
       setStatus(authStatusEl, '');
@@ -631,8 +630,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!adminToken) return;
     setStatus(dashboardStatusEl, '데이터를 새로고침하는 중입니다...');
     try {
-      await loadRegistrations();
-      await loadInvitations();
+      await Promise.all([loadRegistrations(), loadInvitations()]);
     } catch (error) {
       setStatus(dashboardStatusEl, error.message || '새로고침에 실패했습니다.', true);
     }
@@ -899,8 +897,7 @@ document.addEventListener('DOMContentLoaded', () => {
     (async () => {
       setStatus(authStatusEl, '세션을 복원하는 중입니다...');
       try {
-        await loadRegistrations();
-        await loadInvitations();
+        await Promise.all([loadRegistrations(), loadInvitations()]);
         showDashboard();
         switchView('analytics');
         setStatus(authStatusEl, '');
