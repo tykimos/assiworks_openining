@@ -831,28 +831,44 @@ document.addEventListener('DOMContentLoaded', () => {
      ============================================================ */
   const initColumnResizers = () => {
     document.querySelectorAll('.admin-table').forEach((table) => {
-      const ths = table.querySelectorAll('th');
+      if (table.dataset.resizersReady) return;
+      const ths = Array.from(table.querySelectorAll('thead th'));
+      if (ths.length === 0) return;
+
+      // Snapshot current auto-computed widths, then lock them with table-layout: fixed.
+      const widths = ths.map((th) => th.offsetWidth);
+      table.style.width = `${table.offsetWidth}px`;
+      ths.forEach((th, i) => { th.style.width = `${widths[i]}px`; });
+      table.dataset.resizersReady = '1';
+
       ths.forEach((th) => {
-        if (th.querySelector('.col-resizer')) return;
         const resizer = document.createElement('div');
         resizer.className = 'col-resizer';
         th.appendChild(resizer);
 
-        let startX, startW;
+        let startX, startW, startTableW;
         const onMouseMove = (e) => {
           const diff = e.clientX - startX;
-          th.style.width = `${Math.max(40, startW + diff)}px`;
+          const newW = Math.max(36, startW + diff);
+          th.style.width = `${newW}px`;
+          table.style.width = `${startTableW + (newW - startW)}px`;
         };
         const onMouseUp = () => {
           resizer.classList.remove('is-resizing');
+          document.body.style.cursor = '';
+          document.body.style.userSelect = '';
           document.removeEventListener('mousemove', onMouseMove);
           document.removeEventListener('mouseup', onMouseUp);
         };
         resizer.addEventListener('mousedown', (e) => {
           e.preventDefault();
+          e.stopPropagation();
           startX = e.clientX;
           startW = th.offsetWidth;
+          startTableW = table.offsetWidth;
           resizer.classList.add('is-resizing');
+          document.body.style.cursor = 'col-resize';
+          document.body.style.userSelect = 'none';
           document.addEventListener('mousemove', onMouseMove);
           document.addEventListener('mouseup', onMouseUp);
         });
@@ -860,8 +876,20 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   };
 
-  // Observe table mutations to attach resizers automatically.
-  const tableObserver = new MutationObserver(() => initColumnResizers());
+  // Re-init resizers whenever table content changes.
+  const resetAndInitResizers = () => {
+    document.querySelectorAll('.admin-table').forEach((table) => {
+      delete table.dataset.resizersReady;
+      table.style.width = '';
+      table.querySelectorAll('th').forEach((th) => {
+        th.style.width = '';
+        th.querySelector('.col-resizer')?.remove();
+      });
+    });
+    requestAnimationFrame(() => initColumnResizers());
+  };
+
+  const tableObserver = new MutationObserver(() => resetAndInitResizers());
   document.querySelectorAll('.admin-table-wrap').forEach((wrap) => {
     tableObserver.observe(wrap, { childList: true, subtree: true });
   });

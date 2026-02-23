@@ -1114,9 +1114,8 @@ body[data-page='admin'] .admin-page {
 }
 
 .admin-table {
-  width: 100%;
   border-collapse: collapse;
-  min-width: 760px;
+  table-layout: fixed;
 }
 
 .admin-table th,
@@ -1127,10 +1126,9 @@ body[data-page='admin'] .admin-page {
   font-size: 0.82rem;
   color: #23284f;
   vertical-align: top;
-  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 200px;
+  white-space: nowrap;
 }
 
 .admin-table th:first-child,
@@ -1152,17 +1150,17 @@ body[data-page='admin'] .admin-page {
 
 .admin-table th .col-resizer {
   position: absolute;
-  right: 0;
+  right: -2px;
   top: 0;
   bottom: 0;
-  width: 5px;
+  width: 6px;
   cursor: col-resize;
-  background: transparent;
+  z-index: 1;
 }
 
 .admin-table th .col-resizer:hover,
 .admin-table th .col-resizer.is-resizing {
-  background: rgba(99, 107, 255, 0.4);
+  background: rgba(99, 107, 255, 0.5);
 }
 
 .admin-delete {
