@@ -859,6 +859,15 @@ document.addEventListener('DOMContentLoaded', () => {
   /* ============================================================
      Column resizing for tables
      ============================================================ */
+  const saveColWidths = (tableId, ths) => {
+    const widths = ths.map((th) => th.offsetWidth);
+    try { localStorage.setItem(`colWidths_${tableId}`, JSON.stringify(widths)); } catch {}
+  };
+
+  const loadColWidths = (tableId) => {
+    try { return JSON.parse(localStorage.getItem(`colWidths_${tableId}`)); } catch { return null; }
+  };
+
   const initColumnResizers = () => {
     document.querySelectorAll('.admin-table').forEach((table) => {
       if (table.dataset.resizersReady) return;
@@ -866,25 +875,30 @@ document.addEventListener('DOMContentLoaded', () => {
       const ths = Array.from(table.querySelectorAll('thead th'));
       if (ths.length === 0) return;
 
-      // Use inline style widths from HTML if set, otherwise measure from first data row.
-      const wrapWidth = table.closest('.admin-table-wrap')?.clientWidth || table.offsetWidth;
-      const firstRow = table.querySelector('tbody tr');
-      const tds = firstRow ? Array.from(firstRow.children) : [];
+      const tableId = table.className.replace(/\s+/g, '_');
+      const saved = loadColWidths(tableId);
 
-      // Temporarily remove fixed layout to measure natural widths.
-      table.style.tableLayout = 'auto';
-      table.style.width = 'auto';
+      let widths;
+      if (saved && saved.length === ths.length) {
+        // Restore user-saved widths.
+        widths = saved;
+      } else {
+        // First load: use HTML explicit widths or measure naturally.
+        const firstRow = table.querySelector('tbody tr');
+        const tds = firstRow ? Array.from(firstRow.children) : [];
+        table.style.tableLayout = 'auto';
+        table.style.width = 'auto';
+        ths.forEach((th) => { th.style.removeProperty('width'); });
 
-      const widths = ths.map((th, i) => {
-        // Prefer explicit width from HTML attribute.
-        const explicit = parseInt(th.style.width, 10);
-        if (explicit > 0) return explicit;
-        const tdW = tds[i] ? tds[i].offsetWidth : 0;
-        return Math.max(th.offsetWidth, tdW);
-      });
-      const totalW = Math.max(widths.reduce((s, w) => s + w, 0), wrapWidth);
+        widths = ths.map((th, i) => {
+          const explicit = parseInt(th.getAttribute('style')?.match(/width:\s*(\d+)/)?.[1], 10);
+          if (explicit > 0) return explicit;
+          const tdW = tds[i] ? tds[i].offsetWidth : 0;
+          return Math.max(th.offsetWidth, tdW);
+        });
+      }
 
-      // Lock to fixed layout with measured widths.
+      const totalW = widths.reduce((s, w) => s + w, 0);
       table.style.tableLayout = 'fixed';
       table.style.width = `${totalW}px`;
       ths.forEach((th, i) => { th.style.width = `${widths[i]}px`; });
@@ -909,6 +923,7 @@ document.addEventListener('DOMContentLoaded', () => {
           document.body.style.userSelect = '';
           document.removeEventListener('mousemove', onMouseMove);
           document.removeEventListener('mouseup', onMouseUp);
+          saveColWidths(tableId, ths);
         };
         resizer.addEventListener('mousedown', (e) => {
           e.preventDefault();
