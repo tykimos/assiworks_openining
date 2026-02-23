@@ -99,6 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
     viewEls.forEach((viewEl) => {
       viewEl.classList.toggle('is-active', viewEl.id === `admin-view-${targetView}`);
     });
+    requestAnimationFrame(() => initColumnResizers());
   };
 
   const getStatusText = (row) => (row.cancelled_at ? '취소됨' : '정상');
@@ -799,6 +800,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const initColumnResizers = () => {
     document.querySelectorAll('.admin-table').forEach((table) => {
       if (table.dataset.resizersReady) return;
+      if (table.offsetWidth === 0) return;
       const ths = Array.from(table.querySelectorAll('thead th'));
       if (ths.length === 0) return;
 
