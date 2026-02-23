@@ -946,14 +946,27 @@ body[data-page='admin'] .admin-page {
   background: linear-gradient(180deg, #7780ff, #5560f6);
 }
 
+.mini-chart-bar.is-today .mini-chart-track span {
+  background: linear-gradient(180deg, #ff7eb3, #ff3d8a);
+}
+
 .mini-chart-bar strong {
   font-size: 0.8rem;
+}
+
+.mini-chart-bar.is-today strong {
+  color: #ff3d8a;
 }
 
 .mini-chart-bar em {
   font-size: 0.74rem;
   color: #6771a4;
   font-style: normal;
+}
+
+.mini-chart-bar.is-today em {
+  color: #ff3d8a;
+  font-weight: 600;
 }
 
 .line-chart-row {

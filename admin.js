@@ -119,23 +119,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const getStatusText = (row) => (row.cancelled_at ? '취소됨' : '정상');
 
+  const toLocalDateStr = (d) => {
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
   const aggregateLast7Days = (rows) => {
     const labels = [];
     const today = new Date();
+    const todayStr = toLocalDateStr(today);
     for (let i = 6; i >= 0; i -= 1) {
       const day = new Date(today);
       day.setHours(0, 0, 0, 0);
       day.setDate(day.getDate() - i);
-      labels.push(day.toISOString().slice(0, 10));
+      labels.push(toLocalDateStr(day));
     }
     const counts = labels.map(() => 0);
     rows.forEach((row) => {
       if (!row.created_at) return;
-      const key = new Date(row.created_at).toISOString().slice(0, 10);
+      const key = toLocalDateStr(new Date(row.created_at));
       const index = labels.indexOf(key);
       if (index >= 0) counts[index] += 1;
     });
-    return labels.map((label, index) => ({ label: label.slice(5).replace('-', '/'), count: counts[index] }));
+    return labels.map((label, index) => ({
+      label: label.slice(5).replace('-', '/'),
+      count: counts[index],
+      isToday: label === todayStr,
+    }));
   };
 
   const renderDailyChart = () => {
@@ -145,7 +157,8 @@ document.addEventListener('DOMContentLoaded', () => {
     chartDailyEl.innerHTML = points
       .map((item) => {
         const height = Math.round((item.count / max) * 110);
-        return `<div class="mini-chart-bar">
+        const todayCls = item.isToday ? ' is-today' : '';
+        return `<div class="mini-chart-bar${todayCls}">
           <div class="mini-chart-track"><span style="height:${height}px"></span></div>
           <strong>${item.count}</strong>
           <em>${item.label}</em>
