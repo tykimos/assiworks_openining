@@ -533,18 +533,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     adminToken = token;
     sessionStorage.setItem('adminToken', token);
-    setStatus(authStatusEl, '등록 데이터를 불러오는 중입니다...');
+    showDashboard();
+    switchView('analytics');
+    setStatus(dashboardStatusEl, '데이터를 불러오는 중...');
     try {
       await Promise.all([loadRegistrations(), loadInvitations()]);
-      showDashboard();
-      switchView('analytics');
-      setStatus(authStatusEl, '');
+      setStatus(dashboardStatusEl, `총 ${registrations.length}건을 불러왔습니다.`);
     } catch (error) {
+      adminToken = '';
+      sessionStorage.removeItem('adminToken');
       registrations = [];
       filteredRegistrations = [];
       renderRows();
+      showLogin();
       setStatus(authStatusEl, error.message || '조회에 실패했습니다.', true);
-      setStatus(dashboardStatusEl, '', false);
     }
   });
 
@@ -894,13 +896,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Restore session if token exists from a previous page load.
   if (adminToken) {
+    showDashboard();
+    switchView('analytics');
+    setStatus(dashboardStatusEl, '데이터를 불러오는 중...');
     (async () => {
-      setStatus(authStatusEl, '세션을 복원하는 중입니다...');
       try {
         await Promise.all([loadRegistrations(), loadInvitations()]);
-        showDashboard();
-        switchView('analytics');
-        setStatus(authStatusEl, '');
+        setStatus(dashboardStatusEl, `총 ${registrations.length}건을 불러왔습니다.`);
       } catch {
         adminToken = '';
         sessionStorage.removeItem('adminToken');
