@@ -806,21 +806,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Snapshot current auto-computed widths, then lock them with table-layout: fixed.
       const widths = ths.map((th) => th.offsetWidth);
-      table.style.width = `${table.offsetWidth}px`;
+      table.style.width = '100%';
       ths.forEach((th, i) => { th.style.width = `${widths[i]}px`; });
       table.dataset.resizersReady = '1';
 
-      ths.forEach((th) => {
+      // Add resizers to all columns except the last one.
+      ths.slice(0, -1).forEach((th) => {
         const resizer = document.createElement('div');
         resizer.className = 'col-resizer';
         th.appendChild(resizer);
 
-        let startX, startW, startTableW;
+        let startX, startW;
         const onMouseMove = (e) => {
           const diff = e.clientX - startX;
-          const newW = Math.max(36, startW + diff);
-          th.style.width = `${newW}px`;
-          table.style.width = `${startTableW + (newW - startW)}px`;
+          th.style.width = `${Math.max(36, startW + diff)}px`;
         };
         const onMouseUp = () => {
           resizer.classList.remove('is-resizing');
@@ -834,7 +833,6 @@ document.addEventListener('DOMContentLoaded', () => {
           e.stopPropagation();
           startX = e.clientX;
           startW = th.offsetWidth;
-          startTableW = table.offsetWidth;
           resizer.classList.add('is-resizing');
           document.body.style.cursor = 'col-resize';
           document.body.style.userSelect = 'none';
