@@ -52,3 +52,37 @@ create trigger registrations_set_updated_at
 before update on public.registrations
 for each row
 execute procedure public.set_updated_at();
+
+-- ============================================================
+-- invitations table for the Invitation Management feature
+-- ============================================================
+
+create table if not exists public.invitations (
+  id              uuid primary key default gen_random_uuid(),
+  name            text not null,
+  email           text,
+  phone           text,
+  affiliation     text,
+  position        text,
+  category        text not null default '일반',
+  email_sent_at   timestamptz,
+  sms_sent_at     timestamptz,
+  sns_sent_at     timestamptz,
+  call_at         timestamptz,
+  attendance      text not null default 'undecided',
+  memo            text,
+  registration_id uuid references public.registrations(id) on delete set null,
+  created_at      timestamptz not null default timezone('utc', now()),
+  updated_at      timestamptz not null default timezone('utc', now())
+);
+
+create index if not exists invitations_email_idx on public.invitations ((lower(email)));
+create index if not exists invitations_created_at_idx on public.invitations (created_at desc);
+create index if not exists invitations_registration_id_idx on public.invitations (registration_id);
+
+drop trigger if exists invitations_set_updated_at on public.invitations;
+
+create trigger invitations_set_updated_at
+before update on public.invitations
+for each row
+execute procedure public.set_updated_at();

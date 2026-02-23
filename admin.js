@@ -55,10 +55,32 @@ document.addEventListener('DOMContentLoaded', () => {
   const chartCompanyEl = document.getElementById('chart-company');
   const statusBreakdownEl = document.getElementById('status-breakdown');
 
+  const invRowsEl = document.getElementById('inv-rows');
+  const invSearchInput = document.getElementById('inv-search');
+  const invFilterCategory = document.getElementById('inv-filter-category');
+  const invFilterAttendance = document.getElementById('inv-filter-attendance');
+  const invFilterRegistered = document.getElementById('inv-filter-registered');
+  const invSelectAllCheckbox = document.getElementById('inv-select-all');
+  const invBulkDeleteBtn = document.getElementById('inv-bulk-delete-btn');
+  const invAddBtn = document.getElementById('inv-add-btn');
+  const invModal = document.getElementById('inv-modal');
+  const invForm = document.getElementById('inv-form');
+  const invModalTitle = document.getElementById('inv-modal-title');
+  const invCancelBtn = document.getElementById('inv-cancel-btn');
+  const invFormStatus = document.getElementById('inv-form-status');
+  const invStatTotal = document.getElementById('inv-stat-total');
+  const invStatYes = document.getElementById('inv-stat-yes');
+  const invStatNo = document.getElementById('inv-stat-no');
+  const invStatRegistered = document.getElementById('inv-stat-registered');
+
   let adminToken = '';
   let registrations = [];
   let filteredRegistrations = [];
   let selectedIds = new Set();
+  let invitations = [];
+  let filteredInvitations = [];
+  let selectedInvIds = new Set();
+  let editingInvId = null;
 
   const setStatus = (target, message, isError = false) => {
     if (!target) return;
@@ -292,6 +314,148 @@ document.addEventListener('DOMContentLoaded', () => {
     renderStatusBreakdown();
   };
 
+  /* ============================================================
+     Invitations – data, filter, render
+     ============================================================ */
+
+  const applyInvFilters = () => {
+    const keyword = (invSearchInput?.value || '').trim().toLowerCase();
+    const category = invFilterCategory?.value || 'all';
+    const attendance = invFilterAttendance?.value || 'all';
+    const registered = invFilterRegistered?.value || 'all';
+
+    filteredInvitations = invitations.filter((row) => {
+      const matchesKeyword = !keyword
+        ? true
+        : `${row.name || ''} ${row.email || ''} ${row.affiliation || ''} ${row.position || ''} ${row.phone || ''}`
+            .toLowerCase()
+            .includes(keyword);
+      const matchesCategory = category === 'all' || row.category === category;
+      const matchesAttendance = attendance === 'all' || row.attendance === attendance;
+      const isRegistered = row.registration_id != null;
+      const matchesRegistered =
+        registered === 'all'
+          ? true
+          : registered === 'registered'
+            ? isRegistered
+            : !isRegistered;
+      return matchesKeyword && matchesCategory && matchesAttendance && matchesRegistered;
+    });
+  };
+
+  const syncInvSelectionUI = () => {
+    const visibleIds = new Set(filteredInvitations.map((row) => String(row.id)));
+    selectedInvIds = new Set([...selectedInvIds].filter((id) => visibleIds.has(id)));
+    const selectedCount = selectedInvIds.size;
+    const totalVisible = filteredInvitations.length;
+
+    if (invSelectAllCheckbox) {
+      invSelectAllCheckbox.checked = totalVisible > 0 && selectedCount === totalVisible;
+      invSelectAllCheckbox.indeterminate = selectedCount > 0 && selectedCount < totalVisible;
+      invSelectAllCheckbox.disabled = totalVisible === 0;
+    }
+
+    if (invBulkDeleteBtn) {
+      invBulkDeleteBtn.disabled = selectedCount === 0;
+      invBulkDeleteBtn.textContent = selectedCount > 0 ? `선택 삭제 (${selectedCount})` : '선택 삭제';
+    }
+  };
+
+  const renderInvStats = () => {
+    const total = invitations.length;
+    const yes = invitations.filter((r) => r.attendance === 'yes').length;
+    const no = invitations.filter((r) => r.attendance === 'no').length;
+    const reg = invitations.filter((r) => r.registration_id).length;
+    if (invStatTotal) invStatTotal.textContent = String(total);
+    if (invStatYes) invStatYes.textContent = String(yes);
+    if (invStatNo) invStatNo.textContent = String(no);
+    if (invStatRegistered) invStatRegistered.textContent = String(reg);
+  };
+
+  const attendanceLabel = { yes: '참석', no: '불참', undecided: '미정' };
+
+  const renderInvRows = () => {
+    if (!invRowsEl) return;
+    if (!filteredInvitations.length) {
+      invRowsEl.innerHTML = '<tr><td colspan="15">초대 데이터가 없습니다.</td></tr>';
+      syncInvSelectionUI();
+      return;
+    }
+
+    invRowsEl.innerHTML = filteredInvitations
+      .map((row) => {
+        const rowId = String(row.id);
+        const checked = selectedInvIds.has(rowId) ? 'checked' : '';
+        const isRegistered = row.registration_id != null;
+        const regBtnHtml = isRegistered
+          ? '<span class="inv-registered-badge">등록됨</span>'
+          : `<button type="button" class="admin-btn-register" data-id="${escapeHtml(rowId)}">등록</button>`;
+
+        return `<tr>
+          <td><input type="checkbox" class="inv-row-select" data-id="${escapeHtml(rowId)}" ${checked} /></td>
+          <td>${escapeHtml(row.name)}</td>
+          <td>${escapeHtml(row.email || '-')}</td>
+          <td>${escapeHtml(row.phone || '-')}</td>
+          <td>${escapeHtml(row.affiliation || '-')}</td>
+          <td>${escapeHtml(row.position || '-')}</td>
+          <td>${escapeHtml(row.category || '-')}</td>
+          <td>${escapeHtml(formatDateTime(row.email_sent_at))}</td>
+          <td>${escapeHtml(formatDateTime(row.sms_sent_at))}</td>
+          <td>${escapeHtml(formatDateTime(row.sns_sent_at))}</td>
+          <td>${escapeHtml(formatDateTime(row.call_at))}</td>
+          <td>${escapeHtml(attendanceLabel[row.attendance] || '미정')}</td>
+          <td>${isRegistered ? '등록완료' : '-'}</td>
+          <td>${escapeHtml(row.memo || '-')}</td>
+          <td class="inv-actions">
+            ${regBtnHtml}
+            <button type="button" class="admin-btn-edit" data-id="${escapeHtml(rowId)}">수정</button>
+            <button type="button" class="admin-delete" data-id="${escapeHtml(rowId)}">삭제</button>
+          </td>
+        </tr>`;
+      })
+      .join('');
+    syncInvSelectionUI();
+  };
+
+  const renderInvitations = () => {
+    applyInvFilters();
+    renderInvRows();
+    renderInvStats();
+  };
+
+  const loadInvitations = async () => {
+    const data = await sendAdminRequest({
+      method: 'GET',
+      path: '/api/invitations',
+      token: adminToken,
+    });
+    invitations = data.invitations || [];
+    renderInvitations();
+  };
+
+  const openInvModal = (invitation = null) => {
+    editingInvId = invitation?.id || null;
+    if (invModalTitle) invModalTitle.textContent = editingInvId ? '초대 수정' : '초대 추가';
+    invForm?.reset();
+    if (invitation && invForm) {
+      invForm.name.value = invitation.name || '';
+      invForm.email.value = invitation.email || '';
+      invForm.phone.value = invitation.phone || '';
+      invForm.affiliation.value = invitation.affiliation || '';
+      invForm.position.value = invitation.position || '';
+      invForm.category.value = invitation.category || '일반';
+      invForm.attendance.value = invitation.attendance || 'undecided';
+      invForm.memo.value = invitation.memo || '';
+    }
+    setStatus(invFormStatus, '');
+    invModal?.removeAttribute('hidden');
+  };
+
+  const closeInvModal = () => {
+    invModal?.setAttribute('hidden', '');
+    editingInvId = null;
+  };
+
   const deleteRegistrationsByIds = async (ids) => {
     const normalizedIds = Array.from(
       new Set((ids || []).map((value) => String(value).trim()).filter(Boolean)),
@@ -345,6 +509,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setStatus(authStatusEl, '등록 데이터를 불러오는 중입니다...');
     try {
       await loadRegistrations();
+      await loadInvitations();
       showDashboard();
       switchView('analytics');
       setStatus(authStatusEl, '');
@@ -440,6 +605,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setStatus(dashboardStatusEl, '데이터를 새로고침하는 중입니다...');
     try {
       await loadRegistrations();
+      await loadInvitations();
     } catch (error) {
       setStatus(dashboardStatusEl, error.message || '새로고침에 실패했습니다.', true);
     }
@@ -450,13 +616,186 @@ document.addEventListener('DOMContentLoaded', () => {
     registrations = [];
     filteredRegistrations = [];
     selectedIds.clear();
+    invitations = [];
+    filteredInvitations = [];
+    selectedInvIds.clear();
+    editingInvId = null;
     passwordInput.value = '';
     searchInput.value = '';
     statusFilter.value = 'all';
+    if (invSearchInput) invSearchInput.value = '';
+    if (invFilterCategory) invFilterCategory.value = 'all';
+    if (invFilterAttendance) invFilterAttendance.value = 'all';
+    if (invFilterRegistered) invFilterRegistered.value = 'all';
     renderRows();
+    renderInvitations();
     showLogin();
     setStatus(authStatusEl, '로그아웃되었습니다.');
     setStatus(dashboardStatusEl, '');
+  });
+
+  /* ============================================================
+     Invitations – event handlers
+     ============================================================ */
+
+  invAddBtn?.addEventListener('click', () => openInvModal());
+  invCancelBtn?.addEventListener('click', closeInvModal);
+  invModal?.querySelector('.admin-modal-backdrop')?.addEventListener('click', closeInvModal);
+
+  invForm?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const formData = new FormData(invForm);
+    const payload = Object.fromEntries(formData.entries());
+
+    try {
+      if (editingInvId) {
+        payload.id = editingInvId;
+        await sendAdminRequest({ method: 'PUT', path: '/api/invitations', token: adminToken, payload });
+        setStatus(dashboardStatusEl, '초대 정보가 수정되었습니다.');
+      } else {
+        await sendAdminRequest({ method: 'POST', path: '/api/invitations', token: adminToken, payload });
+        setStatus(dashboardStatusEl, '새 초대가 추가되었습니다.');
+      }
+      closeInvModal();
+      await loadInvitations();
+    } catch (error) {
+      setStatus(invFormStatus, error.message || '저장에 실패했습니다.', true);
+    }
+  });
+
+  invRowsEl?.addEventListener('click', async (event) => {
+    const target = event.target;
+
+    // Delete
+    const deleteBtn = target.closest('.admin-delete');
+    if (deleteBtn) {
+      const id = deleteBtn.dataset.id;
+      if (!id || !window.confirm('정말 삭제하시겠습니까?')) return;
+      deleteBtn.disabled = true;
+      try {
+        await sendAdminRequest({ method: 'DELETE', path: '/api/invitations', token: adminToken, payload: { id } });
+        invitations = invitations.filter((item) => String(item.id) !== id);
+        selectedInvIds.delete(id);
+        renderInvitations();
+        setStatus(dashboardStatusEl, '초대가 삭제되었습니다.');
+      } catch (error) {
+        setStatus(dashboardStatusEl, error.message || '삭제에 실패했습니다.', true);
+      } finally {
+        deleteBtn.disabled = false;
+      }
+      return;
+    }
+
+    // Edit
+    const editBtn = target.closest('.admin-btn-edit');
+    if (editBtn) {
+      const id = editBtn.dataset.id;
+      const inv = invitations.find((item) => String(item.id) === id);
+      if (inv) openInvModal(inv);
+      return;
+    }
+
+    // Register (invitation → registration)
+    const regBtn = target.closest('.admin-btn-register');
+    if (regBtn) {
+      const id = regBtn.dataset.id;
+      const inv = invitations.find((item) => String(item.id) === id);
+      if (!inv) return;
+      if (!inv.email) {
+        window.alert('이메일이 없는 초대는 등록할 수 없습니다.');
+        return;
+      }
+      if (!window.confirm(`${inv.name}님을 등록 처리하시겠습니까?`)) return;
+      regBtn.disabled = true;
+      regBtn.textContent = '처리중...';
+      try {
+        const regResult = await sendAdminRequest({
+          method: 'POST',
+          path: '/api/register',
+          token: adminToken,
+          payload: {
+            email: inv.email,
+            name: inv.name,
+            affiliation: inv.affiliation || '',
+            position: inv.position || '',
+          },
+        });
+        const registrationId = regResult.registrationId;
+        if (registrationId) {
+          await sendAdminRequest({
+            method: 'PUT',
+            path: '/api/invitations',
+            token: adminToken,
+            payload: { id: inv.id, registration_id: registrationId, attendance: 'yes' },
+          });
+        }
+        await Promise.all([loadRegistrations(), loadInvitations()]);
+        setStatus(dashboardStatusEl, `${inv.name}님이 등록 처리되었습니다.`);
+      } catch (error) {
+        setStatus(dashboardStatusEl, error.message || '등록 처리에 실패했습니다.', true);
+      } finally {
+        regBtn.disabled = false;
+        regBtn.textContent = '등록';
+      }
+      return;
+    }
+  });
+
+  invRowsEl?.addEventListener('change', (event) => {
+    const checkbox = event.target.closest('.inv-row-select');
+    if (!checkbox) return;
+    const id = checkbox.dataset.id;
+    if (!id) return;
+    if (checkbox.checked) {
+      selectedInvIds.add(id);
+    } else {
+      selectedInvIds.delete(id);
+    }
+    syncInvSelectionUI();
+  });
+
+  const onInvFilterChanged = () => {
+    applyInvFilters();
+    renderInvRows();
+    setStatus(dashboardStatusEl, `조건에 맞는 ${filteredInvitations.length}건을 표시 중입니다.`);
+  };
+
+  invSearchInput?.addEventListener('input', onInvFilterChanged);
+  invFilterCategory?.addEventListener('change', onInvFilterChanged);
+  invFilterAttendance?.addEventListener('change', onInvFilterChanged);
+  invFilterRegistered?.addEventListener('change', onInvFilterChanged);
+
+  invSelectAllCheckbox?.addEventListener('change', () => {
+    if (invSelectAllCheckbox.checked) {
+      selectedInvIds = new Set(filteredInvitations.map((row) => String(row.id)));
+    } else {
+      selectedInvIds.clear();
+    }
+    renderInvRows();
+  });
+
+  invBulkDeleteBtn?.addEventListener('click', async () => {
+    if (!adminToken || selectedInvIds.size === 0) return;
+    const ids = [...selectedInvIds];
+    const confirmed = window.confirm(`선택한 ${ids.length}건을 정말 삭제하시겠습니까?`);
+    if (!confirmed) return;
+
+    invBulkDeleteBtn.disabled = true;
+    try {
+      await sendAdminRequest({
+        method: 'DELETE',
+        path: '/api/invitations',
+        token: adminToken,
+        payload: { ids },
+      });
+      invitations = invitations.filter((item) => !selectedInvIds.has(String(item.id)));
+      selectedInvIds.clear();
+      renderInvitations();
+      setStatus(dashboardStatusEl, `${ids.length}건이 삭제되었습니다.`);
+    } catch (error) {
+      setStatus(dashboardStatusEl, error.message || '선택 삭제에 실패했습니다.', true);
+      syncInvSelectionUI();
+    }
   });
 
   // Always start from login view before admin authentication.

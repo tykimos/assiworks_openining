@@ -34,6 +34,7 @@
           <nav class="admin-sidebar-menu" aria-label="관리 메뉴">
             <button type="button" class="sidebar-menu-btn is-active" data-view-target="analytics">대시보드</button>
             <button type="button" class="sidebar-menu-btn" data-view-target="registrations">등록 조회</button>
+            <button type="button" class="sidebar-menu-btn" data-view-target="invitations">초대관리</button>
           </nav>
         </aside>
 
@@ -136,6 +137,150 @@
                 </table>
               </div>
             </article>
+          </section>
+
+          <section id="admin-view-invitations" class="admin-view">
+            <article class="admin-card">
+              <div class="admin-invitations-header">
+                <h4>초대 관리</h4>
+                <button id="inv-add-btn" type="button" class="admin-btn-add">+ 초대 추가</button>
+              </div>
+
+              <div class="admin-stats-grid admin-stats-grid-inv">
+                <article class="admin-stat-card">
+                  <p>총 초대</p>
+                  <strong id="inv-stat-total">0</strong>
+                </article>
+                <article class="admin-stat-card">
+                  <p>참석 확정</p>
+                  <strong id="inv-stat-yes">0</strong>
+                </article>
+                <article class="admin-stat-card">
+                  <p>불참</p>
+                  <strong id="inv-stat-no">0</strong>
+                </article>
+                <article class="admin-stat-card">
+                  <p>등록 완료</p>
+                  <strong id="inv-stat-registered">0</strong>
+                </article>
+              </div>
+
+              <div class="admin-filters admin-filters-invitations">
+                <input id="inv-search" type="text" placeholder="이름 / 이메일 / 소속 / 직위 검색" />
+                <select id="inv-filter-category" aria-label="초대구분 필터">
+                  <option value="all">전체 구분</option>
+                  <option value="VIP">VIP</option>
+                  <option value="일반">일반</option>
+                  <option value="스피커">스피커</option>
+                </select>
+                <select id="inv-filter-attendance" aria-label="참석유무 필터">
+                  <option value="all">전체 참석</option>
+                  <option value="yes">참석</option>
+                  <option value="no">불참</option>
+                  <option value="undecided">미정</option>
+                </select>
+                <select id="inv-filter-registered" aria-label="등록여부 필터">
+                  <option value="all">전체 등록</option>
+                  <option value="registered">등록완료</option>
+                  <option value="unregistered">미등록</option>
+                </select>
+              </div>
+
+              <div class="admin-table-actions">
+                <label class="admin-select-all">
+                  <input id="inv-select-all" type="checkbox" />
+                  <span>전체 선택</span>
+                </label>
+                <button id="inv-bulk-delete-btn" type="button" class="admin-delete admin-delete-bulk" disabled>
+                  선택 삭제
+                </button>
+              </div>
+
+              <div class="admin-table-wrap">
+                <table class="admin-table admin-table-invitations">
+                  <thead>
+                    <tr>
+                      <th aria-label="선택"></th>
+                      <th>이름</th>
+                      <th>이메일</th>
+                      <th>전화번호</th>
+                      <th>소속</th>
+                      <th>직위</th>
+                      <th>초대구분</th>
+                      <th>이메일전송</th>
+                      <th>문자전송</th>
+                      <th>SNS전송</th>
+                      <th>유선연락</th>
+                      <th>참석유무</th>
+                      <th>등록여부</th>
+                      <th>비고</th>
+                      <th>관리</th>
+                    </tr>
+                  </thead>
+                  <tbody id="inv-rows">
+                    <tr>
+                      <td colspan="15">초대 데이터가 없습니다.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </article>
+
+            <div id="inv-modal" class="admin-modal" hidden>
+              <div class="admin-modal-backdrop"></div>
+              <div class="admin-modal-content admin-card">
+                <h4 id="inv-modal-title">초대 추가</h4>
+                <form id="inv-form" class="inv-form">
+                  <div class="inv-form-grid">
+                    <div class="field">
+                      <label for="inv-name">이름 *</label>
+                      <input id="inv-name" name="name" type="text" required />
+                    </div>
+                    <div class="field">
+                      <label for="inv-email">이메일</label>
+                      <input id="inv-email" name="email" type="email" />
+                    </div>
+                    <div class="field">
+                      <label for="inv-phone">전화번호</label>
+                      <input id="inv-phone" name="phone" type="tel" />
+                    </div>
+                    <div class="field">
+                      <label for="inv-affiliation">소속</label>
+                      <input id="inv-affiliation" name="affiliation" type="text" />
+                    </div>
+                    <div class="field">
+                      <label for="inv-position">직위</label>
+                      <input id="inv-position" name="position" type="text" />
+                    </div>
+                    <div class="field">
+                      <label for="inv-category">초대구분</label>
+                      <select id="inv-category" name="category">
+                        <option value="일반">일반</option>
+                        <option value="VIP">VIP</option>
+                        <option value="스피커">스피커</option>
+                      </select>
+                    </div>
+                    <div class="field">
+                      <label for="inv-attendance">참석유무</label>
+                      <select id="inv-attendance" name="attendance">
+                        <option value="undecided">미정</option>
+                        <option value="yes">참석</option>
+                        <option value="no">불참</option>
+                      </select>
+                    </div>
+                    <div class="field field-full">
+                      <label for="inv-memo">비고</label>
+                      <textarea id="inv-memo" name="memo" rows="2"></textarea>
+                    </div>
+                  </div>
+                  <div class="inv-form-actions">
+                    <button type="button" class="secondary admin-btn-secondary" id="inv-cancel-btn">취소</button>
+                    <button type="submit" class="primary">저장</button>
+                  </div>
+                </form>
+                <p id="inv-form-status" class="admin-status" role="status"></p>
+              </div>
+            </div>
           </section>
         </section>
       </section>

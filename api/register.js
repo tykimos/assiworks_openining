@@ -30,7 +30,7 @@ module.exports = async (req, res) => {
     const normalizedAffiliation = affiliation || company || null;
     const normalizedPosition = position || null;
 
-    const { error } = await supabase
+    const { data: insertedRow, error } = await supabase
       .from('registrations')
       .insert({
         email,
@@ -58,6 +58,7 @@ module.exports = async (req, res) => {
       return res.status(200).json({
         ok: true,
         registered: true,
+        registrationId: insertedRow?.id || null,
         cancelToken,
         cancelLink,
         email: {
@@ -71,6 +72,7 @@ module.exports = async (req, res) => {
       return res.status(502).json({
         ok: false,
         registered: true,
+        registrationId: insertedRow?.id || null,
         cancelToken,
         cancelLink,
         email: {
