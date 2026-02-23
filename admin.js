@@ -941,39 +941,14 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   };
 
-  // Re-init resizers whenever table content changes.
-  let resizeScheduled = false;
-  const tableWraps = document.querySelectorAll('.admin-table-wrap');
-
-  const resetAndInitResizers = () => {
-    tableObserver.disconnect();
-    document.querySelectorAll('.admin-table').forEach((table) => {
-      delete table.dataset.resizersReady;
-      table.style.width = '';
-      table.querySelectorAll('th').forEach((th) => {
-        th.style.width = '';
-        th.querySelector('.col-resizer')?.remove();
-      });
-    });
-    requestAnimationFrame(() => {
+  // Re-attach resizers after table body re-render (resizers live in thead, unaffected by tbody changes).
+  const refreshResizers = (table) => {
+    if (!table) return;
+    // Resizers are in thead which doesn't change; just ensure they're initialized.
+    if (!table.dataset.resizersReady) {
       initColumnResizers();
-      tableWraps.forEach((wrap) => {
-        tableObserver.observe(wrap, { childList: true, subtree: true });
-      });
-    });
+    }
   };
-
-  const tableObserver = new MutationObserver(() => {
-    if (resizeScheduled) return;
-    resizeScheduled = true;
-    requestAnimationFrame(() => {
-      resizeScheduled = false;
-      resetAndInitResizers();
-    });
-  });
-  tableWraps.forEach((wrap) => {
-    tableObserver.observe(wrap, { childList: true, subtree: true });
-  });
 
   // Restore session if token exists from a previous page load.
   if (adminToken) {
