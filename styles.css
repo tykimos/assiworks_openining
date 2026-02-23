@@ -781,6 +781,7 @@ body[data-page='admin'] .admin-page {
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
+  margin-top: 0.5rem;
 }
 
 .sidebar-menu-btn {
@@ -793,6 +794,17 @@ body[data-page='admin'] .admin-page {
   font-weight: 600;
   font-size: 0.88rem;
   cursor: pointer;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* Collapsed sidebar: show only first character as icon */
+.admin-dashboard:not(.sidebar-open) .sidebar-menu-btn {
+  padding: 0.55rem 0;
+  text-align: center;
+  font-size: 0.75rem;
+  text-overflow: clip;
 }
 
 .sidebar-menu-btn.is-active {
@@ -1175,21 +1187,21 @@ body[data-page='admin'] .admin-page {
 }
 
 @media (max-width: 1024px) {
-  .admin-dashboard {
+  .admin-dashboard,
+  .admin-dashboard.sidebar-open {
     grid-template-columns: 1fr;
     min-height: auto;
   }
 
-  .admin-dashboard.sidebar-open {
-    grid-template-columns: 1fr;
-  }
-
   .admin-sidebar {
-    padding: 0.6rem 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.7rem;
   }
 
   .sidebar-toggle {
-    display: inline-flex;
+    flex-shrink: 0;
   }
 
   .sidebar-body {
@@ -1201,21 +1213,7 @@ body[data-page='admin'] .admin-page {
     flex-direction: row;
     flex-wrap: wrap;
     gap: 0.4rem;
-    margin-left: 0.8rem;
-    vertical-align: middle;
-  }
-
-  .admin-dashboard .admin-sidebar {
-    display: flex;
-    align-items: center;
-  }
-
-  .admin-dashboard .admin-sidebar .sidebar-toggle {
-    flex-shrink: 0;
-  }
-
-  .admin-dashboard .admin-sidebar .admin-sidebar-menu {
-    display: inline-flex;
+    margin-top: 0;
   }
 
   .sidebar-menu-btn {
@@ -1223,6 +1221,15 @@ body[data-page='admin'] .admin-page {
     text-align: center;
     padding: 0.45rem 0.75rem;
     font-size: 0.82rem;
+    overflow: visible;
+    text-overflow: unset;
+  }
+
+  .admin-dashboard:not(.sidebar-open) .sidebar-menu-btn {
+    padding: 0.45rem 0.75rem;
+    text-align: center;
+    font-size: 0.82rem;
+    text-overflow: unset;
   }
 
   .admin-stats-grid {
