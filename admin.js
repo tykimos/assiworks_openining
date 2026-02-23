@@ -66,6 +66,26 @@ document.addEventListener('DOMContentLoaded', () => {
   let selectedInvIds = new Set();
   let editingInvId = null;
 
+  // Sort state: { key, asc }
+  let regSort = { key: null, asc: true };
+  let invSort = { key: null, asc: true };
+
+  const sortData = (arr, sortState) => {
+    if (!sortState.key) return arr;
+    const k = sortState.key;
+    const dir = sortState.asc ? 1 : -1;
+    return [...arr].sort((a, b) => {
+      let va = a[k], vb = b[k];
+      if (va == null) va = '';
+      if (vb == null) vb = '';
+      if (typeof va === 'string') va = va.toLowerCase();
+      if (typeof vb === 'string') vb = vb.toLowerCase();
+      if (va < vb) return -1 * dir;
+      if (va > vb) return 1 * dir;
+      return 0;
+    });
+  };
+
   const setStatus = (target, message, isError = false) => {
     if (!target) return;
     target.textContent = message;
@@ -247,6 +267,7 @@ document.addEventListener('DOMContentLoaded', () => {
         status === 'all' ? true : status === 'cancelled' ? Boolean(row.cancelled_at) : !row.cancelled_at;
       return matchesKeyword && matchesStatus;
     });
+    filteredRegistrations = sortData(filteredRegistrations, regSort);
   };
 
   const syncSelectionUI = () => {
@@ -339,6 +360,7 @@ document.addEventListener('DOMContentLoaded', () => {
             : !isRegistered;
       return matchesKeyword && matchesCategory && matchesAttendance && matchesRegistered;
     });
+    filteredInvitations = sortData(filteredInvitations, invSort);
   };
 
   const syncInvSelectionUI = () => {
@@ -560,6 +582,46 @@ document.addEventListener('DOMContentLoaded', () => {
       const target = button.dataset.viewTarget || 'overview';
       switchView(target);
     });
+  });
+
+  // Column sort – registrations table
+  const updateSortIndicators = (table, sortState) => {
+    table.querySelectorAll('th.sortable').forEach((th) => {
+      th.classList.remove('sort-asc', 'sort-desc');
+      if (th.dataset.sortKey === sortState.key) {
+        th.classList.add(sortState.asc ? 'sort-asc' : 'sort-desc');
+      }
+    });
+  };
+
+  const regTable = rowsEl?.closest('table');
+  regTable?.querySelector('thead')?.addEventListener('click', (e) => {
+    const th = e.target.closest('th.sortable');
+    if (!th) return;
+    const key = th.dataset.sortKey;
+    if (regSort.key === key) {
+      regSort.asc = !regSort.asc;
+    } else {
+      regSort = { key, asc: true };
+    }
+    updateSortIndicators(regTable, regSort);
+    applyFilters();
+    renderRows();
+  });
+
+  const invTable = invRowsEl?.closest('table');
+  invTable?.querySelector('thead')?.addEventListener('click', (e) => {
+    const th = e.target.closest('th.sortable');
+    if (!th) return;
+    const key = th.dataset.sortKey;
+    if (invSort.key === key) {
+      invSort.asc = !invSort.asc;
+    } else {
+      invSort = { key, asc: true };
+    }
+    updateSortIndicators(invTable, invSort);
+    applyInvFilters();
+    renderInvRows();
   });
 
   const onFilterChanged = () => {

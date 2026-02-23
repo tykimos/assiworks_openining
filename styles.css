@@ -1160,6 +1160,31 @@ body[data-page='admin'] .admin-page {
   user-select: none;
 }
 
+.admin-table th.sortable {
+  cursor: pointer;
+}
+
+.admin-table th.sortable:hover {
+  color: #4f5ae0;
+}
+
+.admin-table th.sortable::after {
+  content: '⇅';
+  margin-left: 4px;
+  opacity: 0.3;
+  font-size: 0.7rem;
+}
+
+.admin-table th.sort-asc::after {
+  content: '▲';
+  opacity: 1;
+}
+
+.admin-table th.sort-desc::after {
+  content: '▼';
+  opacity: 1;
+}
+
 .admin-table th .col-resizer {
   position: absolute;
   right: -2px;
