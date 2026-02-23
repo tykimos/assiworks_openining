@@ -73,7 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const invStatNo = document.getElementById('inv-stat-no');
   const invStatRegistered = document.getElementById('inv-stat-registered');
 
-  let adminToken = '';
+  let adminToken = sessionStorage.getItem('adminToken') || '';
   let registrations = [];
   let filteredRegistrations = [];
   let selectedIds = new Set();
@@ -506,6 +506,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
     adminToken = token;
+    sessionStorage.setItem('adminToken', token);
     setStatus(authStatusEl, '등록 데이터를 불러오는 중입니다...');
     try {
       await loadRegistrations();
@@ -613,6 +614,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   logoutBtn?.addEventListener('click', () => {
     adminToken = '';
+    sessionStorage.removeItem('adminToken');
     registrations = [];
     filteredRegistrations = [];
     selectedIds.clear();
@@ -798,6 +800,24 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Always start from login view before admin authentication.
-  showLogin();
+  // Restore session if token exists from a previous page load.
+  if (adminToken) {
+    (async () => {
+      setStatus(authStatusEl, '세션을 복원하는 중입니다...');
+      try {
+        await loadRegistrations();
+        await loadInvitations();
+        showDashboard();
+        switchView('analytics');
+        setStatus(authStatusEl, '');
+      } catch {
+        adminToken = '';
+        sessionStorage.removeItem('adminToken');
+        showLogin();
+        setStatus(authStatusEl, '세션이 만료되었습니다. 다시 로그인해주세요.', true);
+      }
+    })();
+  } else {
+    showLogin();
+  }
 });
