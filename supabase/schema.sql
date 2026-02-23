@@ -86,3 +86,22 @@ create trigger invitations_set_updated_at
 before update on public.invitations
 for each row
 execute procedure public.set_updated_at();
+
+-- ============================================================
+-- Row Level Security – anon key에서 직접 접근 허용
+-- Supabase 대시보드 SQL Editor에서 아래를 실행하세요.
+-- ============================================================
+
+alter table public.registrations enable row level security;
+create policy "Anyone can insert registrations"
+  on public.registrations for insert with check (true);
+create policy "Anyone can select registrations"
+  on public.registrations for select using (true);
+create policy "Anyone can update registrations"
+  on public.registrations for update using (true);
+create policy "Anyone can delete registrations"
+  on public.registrations for delete using (true);
+
+alter table public.invitations enable row level security;
+create policy "Full access to invitations"
+  on public.invitations for all using (true) with check (true);

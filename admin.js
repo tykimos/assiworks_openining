@@ -1,34 +1,5 @@
-const API_FALLBACK_HOST = 'https://assiworks-openining.vercel.app';
-
-const sendAdminRequest = async ({ method, path, token, payload }) => {
-  const bases = [''];
-  if (!window.location.origin.startsWith(API_FALLBACK_HOST)) {
-    bases.push(API_FALLBACK_HOST);
-  }
-
-  let lastError = null;
-  for (const base of bases) {
-    try {
-      const response = await fetch(`${base}${path}`, {
-        method,
-        headers: {
-          'content-type': 'application/json',
-          'x-admin-token': token,
-        },
-        body: payload ? JSON.stringify(payload) : undefined,
-      });
-      const data = await response.json().catch(() => ({}));
-      if (response.ok && data?.ok !== false) {
-        return data;
-      }
-      lastError = new Error(data?.message || `요청 실패 (${response.status})`);
-    } catch (error) {
-      lastError = error;
-    }
-  }
-
-  throw lastError || new Error('요청 중 오류가 발생했습니다.');
-};
+/* global sb */
+const ADMIN_PASSWORD = 'assiworks2020!@';
 
 document.addEventListener('DOMContentLoaded', () => {
   /* ============================================================
@@ -450,23 +421,31 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   const loadInvitations = async () => {
-    const data = await sendAdminRequest({
-      method: 'GET',
-      path: '/api/invitations',
-      token: adminToken,
-    });
-    invitations = data.invitations || [];
+    const { data, error } = await sb
+      .from('invitations')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(500);
+    if (error) throw error;
+    invitations = data || [];
     renderInvitations();
   };
 
   const loadAllData = async () => {
-    const data = await sendAdminRequest({
-      method: 'GET',
-      path: '/api/admin-data',
-      token: adminToken,
-    });
-    registrations = data.registrations || [];
-    invitations = data.invitations || [];
+    const [regResult, invResult] = await Promise.all([
+      sb.from('registrations')
+        .select('id,name,email,affiliation,position,note,cancelled_at,created_at')
+        .order('created_at', { ascending: false })
+        .limit(200),
+      sb.from('invitations')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(500),
+    ]);
+    if (regResult.error) throw regResult.error;
+    if (invResult.error) throw invResult.error;
+    registrations = regResult.data || [];
+    invitations = invResult.data || [];
     renderDashboard();
     renderInvitations();
     setStatus(dashboardStatusEl, `등록 ${registrations.length}건 · 초대 ${invitations.length}건`);
@@ -500,39 +479,18 @@ document.addEventListener('DOMContentLoaded', () => {
       new Set((ids || []).map((value) => String(value).trim()).filter(Boolean)),
     );
     if (!normalizedIds.length) return;
-
-    try {
-      await sendAdminRequest({
-        method: 'DELETE',
-        path: '/api/registrations',
-        token: adminToken,
-        payload: normalizedIds.length === 1 ? { id: normalizedIds[0] } : { ids: normalizedIds },
-      });
-      return;
-    } catch (error) {
-      // 구버전 API 호환: ids 배열 미지원 환경에서는 개별 삭제로 폴백.
-      if (normalizedIds.length === 1) throw error;
-    }
-
-    await Promise.all(
-      normalizedIds.map((id) =>
-        sendAdminRequest({
-          method: 'DELETE',
-          path: '/api/registrations',
-          token: adminToken,
-          payload: { id },
-        }),
-      ),
-    );
+    const { error } = await sb.from('registrations').delete().in('id', normalizedIds);
+    if (error) throw error;
   };
 
   const loadRegistrations = async () => {
-    const data = await sendAdminRequest({
-      method: 'GET',
-      path: '/api/registrations',
-      token: adminToken,
-    });
-    registrations = data.registrations || [];
+    const { data, error } = await sb
+      .from('registrations')
+      .select('id,name,email,affiliation,position,note,cancelled_at,created_at')
+      .order('created_at', { ascending: false })
+      .limit(200);
+    if (error) throw error;
+    registrations = data || [];
     renderDashboard();
     setStatus(dashboardStatusEl, `총 ${registrations.length}건을 불러왔습니다.`);
   };
@@ -544,6 +502,10 @@ document.addEventListener('DOMContentLoaded', () => {
       setStatus(authStatusEl, '관리 비밀번호를 입력해주세요.', true);
       return;
     }
+    if (token !== ADMIN_PASSWORD) {
+      setStatus(authStatusEl, '비밀번호가 올바르지 않습니다.', true);
+      return;
+    }
     adminToken = token;
     sessionStorage.setItem('adminToken', token);
     showDashboard();
@@ -552,13 +514,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       await loadAllData();
     } catch (error) {
-      adminToken = '';
-      sessionStorage.removeItem('adminToken');
-      registrations = [];
-      filteredRegistrations = [];
-      renderRows();
-      showLogin();
-      setStatus(authStatusEl, error.message || '조회에 실패했습니다.', true);
+      setStatus(dashboardStatusEl, error.message || '조회에 실패했습니다.', true);
     }
   });
 
@@ -689,11 +645,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     try {
       if (editingInvId) {
-        payload.id = editingInvId;
-        await sendAdminRequest({ method: 'PUT', path: '/api/invitations', token: adminToken, payload });
+        const { error } = await sb.from('invitations').update(payload).eq('id', editingInvId);
+        if (error) throw new Error(error.message);
         setStatus(dashboardStatusEl, '초대 정보가 수정되었습니다.');
       } else {
-        await sendAdminRequest({ method: 'POST', path: '/api/invitations', token: adminToken, payload });
+        const { error } = await sb.from('invitations').insert(payload);
+        if (error) throw new Error(error.message);
         setStatus(dashboardStatusEl, '새 초대가 추가되었습니다.');
       }
       closeInvModal();
@@ -713,7 +670,8 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!id || !window.confirm('정말 삭제하시겠습니까?')) return;
       deleteBtn.disabled = true;
       try {
-        await sendAdminRequest({ method: 'DELETE', path: '/api/invitations', token: adminToken, payload: { id } });
+        const { error } = await sb.from('invitations').delete().eq('id', id);
+        if (error) throw new Error(error.message);
         invitations = invitations.filter((item) => String(item.id) !== id);
         selectedInvIds.delete(id);
         renderInvitations();
@@ -749,25 +707,26 @@ document.addEventListener('DOMContentLoaded', () => {
       regBtn.disabled = true;
       regBtn.textContent = '처리중...';
       try {
-        const regResult = await sendAdminRequest({
-          method: 'POST',
-          path: '/api/register',
-          token: adminToken,
-          payload: {
+        const cancelToken = crypto.randomUUID();
+        const { data: regData, error: regError } = await sb
+          .from('registrations')
+          .insert({
             email: inv.email,
             name: inv.name,
             affiliation: inv.affiliation || '',
             position: inv.position || '',
-          },
-        });
-        const registrationId = regResult.registrationId;
+            cancel_token: cancelToken,
+          })
+          .select('id')
+          .single();
+        if (regError) throw new Error(regError.message);
+        const registrationId = regData.id;
         if (registrationId) {
-          await sendAdminRequest({
-            method: 'PUT',
-            path: '/api/invitations',
-            token: adminToken,
-            payload: { id: inv.id, registration_id: registrationId, attendance: 'yes' },
-          });
+          const { error: invError } = await sb
+            .from('invitations')
+            .update({ registration_id: registrationId, attendance: 'yes' })
+            .eq('id', inv.id);
+          if (invError) throw new Error(invError.message);
         }
         await Promise.all([loadRegistrations(), loadInvitations()]);
         setStatus(dashboardStatusEl, `${inv.name}님이 등록 처리되었습니다.`);
@@ -822,12 +781,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     invBulkDeleteBtn.disabled = true;
     try {
-      await sendAdminRequest({
-        method: 'DELETE',
-        path: '/api/invitations',
-        token: adminToken,
-        payload: { ids },
-      });
+      const { error } = await sb.from('invitations').delete().in('id', ids);
+      if (error) throw new Error(error.message);
       invitations = invitations.filter((item) => !selectedInvIds.has(String(item.id)));
       selectedInvIds.clear();
       renderInvitations();

@@ -159,50 +159,14 @@ const loadCopyDeck = async () => {
   }
 };
 
-const API_FALLBACK_HOST = 'https://assiworks-openining.vercel.app';
+/* global sb, sendRegistrationEmail */
 const DEFAULT_SEAT_CAPACITY = 100;
 
-const sendJson = async (baseUrl, path, method, payload) => {
-  const endpoint = `${baseUrl}${path}`;
-  const options = { method, headers: { 'content-type': 'application/json' } };
-  if (payload && method !== 'GET') {
-    options.body = JSON.stringify(payload);
-  }
-  const response = await fetch(endpoint, options);
-  const data = await response.json().catch(() => ({}));
-  return { response, data };
+const generateCancelToken = () => {
+  const bytes = new Uint8Array(24);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
 };
-
-const requestJSON = async ({ path, method = 'POST', payload }) => {
-  const bases = [''];
-  const fallbackHost = API_FALLBACK_HOST;
-  const currentHost = window.location.origin;
-  if (!currentHost.startsWith(fallbackHost)) {
-    bases.push(fallbackHost);
-  }
-
-  let lastError;
-  for (const base of bases) {
-    try {
-      const { response, data } = await sendJson(base, path, method, payload);
-      if (response.ok && data?.ok !== false) {
-        return data;
-      }
-      const message = data?.message || data?.error || `요청 처리 중 오류가 발생했습니다. (${response.status})`;
-      const enrichedError = new Error(message);
-      enrichedError.payload = data;
-      enrichedError.statusCode = response.status;
-      lastError = enrichedError;
-    } catch (error) {
-      lastError = error;
-    }
-  }
-
-  throw lastError || new Error('요청 처리 중 오류가 발생했습니다.');
-};
-
-const postJSON = (path, payload) => requestJSON({ path, method: 'POST', payload });
-const getJSON = (path) => requestJSON({ path, method: 'GET' });
 
 document.addEventListener('DOMContentLoaded', async () => {
   loadCopyDeck();
@@ -284,11 +248,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   const refreshSeatProgress = async () => {
     if (!seatProgress) return;
     try {
-      const seatStatus = await getJSON('/api/seat-status');
-      updateSeatProgress({
-        capacity: seatStatus?.capacity,
-        activeCount: seatStatus?.activeCount,
-      });
+      const { count, error } = await sb
+        .from('registrations')
+        .select('id', { count: 'exact', head: true })
+        .is('cancelled_at', null);
+      if (error) throw error;
+      updateSeatProgress({ capacity: DEFAULT_SEAT_CAPACITY, activeCount: count || 0 });
     } catch (error) {
       console.warn('Seat status fetch failed', error);
       setSeatProgressFallback();
@@ -442,35 +407,41 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     try {
-      const result = await postJSON('/api/register', payload);
-      const isRegistered = Boolean(result?.registered);
-      const isEmailSuccess = result?.email?.success !== false;
-      setRegisterProgressByResult({ registered: isRegistered, emailSuccess: isEmailSuccess, completed: true });
+      const cancelToken = generateCancelToken();
+      const { data: insertedRow, error: insertError } = await sb
+        .from('registrations')
+        .insert({
+          email: payload.email,
+          name: payload.name,
+          affiliation: payload.affiliation || null,
+          position: payload.position || null,
+          note: payload.message || null,
+          cancel_token: cancelToken,
+        })
+        .select('id')
+        .single();
+      if (insertError) throw insertError;
+
+      registerProgress?.setStep(1, 'success');
+      registerProgress?.setStep(2, 'active');
+
+      const cancelLink = `${window.location.origin}/cancel.html?token=${cancelToken}&email=${encodeURIComponent(payload.email)}`;
+      let emailSuccess = false;
+      try {
+        await sendRegistrationEmail({ to: payload.email, name: payload.name, cancelLink });
+        emailSuccess = true;
+      } catch (emailError) {
+        console.warn('Email send failed', emailError);
+      }
+
+      setRegisterProgressByResult({ registered: true, emailSuccess, completed: true });
       const nameValue = payload.name?.toString().trim() || '게스트';
       setStatus(registerStatus, `${nameValue}님, 등록 요청을 완료했습니다. 이메일을 확인해주세요.`);
-      // 등록 페이지에는 취소 상태 노드가 없어도 성공 처리되도록 안전하게 동작시킵니다.
-      if (cancelPageStatus && document.body.dataset.page === 'cancel') {
-        cancelPageStatus.textContent = `취소 링크: ${result.cancelLink}`;
-      }
       registerForm.reset();
       refreshSeatProgress();
     } catch (error) {
-      const responsePayload = error?.payload || {};
-      const isRegistered = Boolean(responsePayload?.registered);
-      const isEmailSuccess = responsePayload?.email?.success === true;
-      const detailedEmailError =
-        responsePayload?.email?.results?.[0]?.errorMessage || responsePayload?.email?.error || null;
-      setRegisterProgressByResult({
-        registered: isRegistered,
-        emailSuccess: isEmailSuccess,
-        completed: false,
-      });
-      const errorMessage =
-        detailedEmailError ||
-        responsePayload?.message ||
-        error.message ||
-        '등록에 실패했습니다.';
-      setStatus(registerStatus, errorMessage, true);
+      setRegisterProgressByResult({ registered: false, emailSuccess: false, completed: false });
+      setStatus(registerStatus, error.message || '등록에 실패했습니다.', true);
     } finally {
       registerInFlight = false;
       if (submitButton) {
@@ -488,24 +459,31 @@ document.addEventListener('DOMContentLoaded', async () => {
     setCancelButtonState(form, { disabled: true, label: '처리 중...' });
     setStatus(statusElement, '취소 요청을 처리 중입니다...');
     try {
-      const result = await postJSON('/api/cancel', { email, token });
-      const cancelledAtText = formatCancelDateTime(result?.cancelledAt);
-      if (result?.alreadyCancelled) {
-        setStatus(
-          statusElement,
-          cancelledAtText
-            ? `이미 취소된 신청입니다. ${cancelledAtText}에 취소되었습니다.`
-            : '이미 취소된 신청입니다.'
-        );
+      const { data: reg, error: findError } = await sb
+        .from('registrations')
+        .select('id, cancelled_at')
+        .eq('cancel_token', token)
+        .maybeSingle();
+      if (findError || !reg) {
+        setStatus(statusElement, '해당 정보를 찾을 수 없습니다.', true);
+        setCancelButtonState(form, { disabled: false, label: '등록 취소' });
+        return;
+      }
+      if (reg.cancelled_at) {
+        const cancelledAtText = formatCancelDateTime(reg.cancelled_at);
+        setStatus(statusElement, cancelledAtText
+          ? `이미 취소된 신청입니다. ${cancelledAtText}에 취소되었습니다.`
+          : '이미 취소된 신청입니다.');
         setCancelButtonState(form, { disabled: true, label: '이미 취소됨' });
         return;
       }
-      setStatus(
-        statusElement,
-        cancelledAtText
-          ? `등록 취소가 완료되었습니다. ${cancelledAtText}에 취소되었습니다.`
-          : '등록 취소가 완료되었습니다.'
-      );
+      const now = new Date().toISOString();
+      const { error: updateError } = await sb
+        .from('registrations')
+        .update({ cancelled_at: now })
+        .eq('id', reg.id);
+      if (updateError) throw updateError;
+      setStatus(statusElement, `등록 취소가 완료되었습니다. ${formatCancelDateTime(now)}에 취소되었습니다.`);
       setCancelButtonState(form, { disabled: true, label: '취소 완료' });
     } catch (error) {
       setStatus(statusElement, error.message || '취소 요청을 처리하지 못했습니다.', true);
@@ -535,29 +513,27 @@ document.addEventListener('DOMContentLoaded', async () => {
       setCancelButtonState(cancelPageForm, { disabled: true, label: '확인 중...' });
       setStatus(cancelPageStatus, '취소 상태를 확인하는 중입니다...');
       try {
-        const status = await getJSON(
-          `/api/cancel?email=${encodeURIComponent(email)}&token=${encodeURIComponent(token)}`
-        );
-        if (status?.cancelled) {
-          const cancelledAtText = formatCancelDateTime(status?.cancelledAt);
-          setStatus(
-            cancelPageStatus,
-            cancelledAtText
-              ? `이미 취소된 신청입니다. ${cancelledAtText}에 취소되었습니다.`
-              : '이미 취소된 신청입니다.'
-          );
+        const { data: reg, error: findError } = await sb
+          .from('registrations')
+          .select('id, cancelled_at')
+          .eq('cancel_token', token)
+          .maybeSingle();
+        if (findError || !reg) {
+          setStatus(cancelPageStatus, '취소 가능한 등록 정보를 찾지 못했습니다. 이메일/취소 코드를 확인해주세요.');
+          setCancelButtonState(cancelPageForm, { disabled: false, label: '등록 취소' });
+          return;
+        }
+        if (reg.cancelled_at) {
+          const cancelledAtText = formatCancelDateTime(reg.cancelled_at);
+          setStatus(cancelPageStatus, cancelledAtText
+            ? `이미 취소된 신청입니다. ${cancelledAtText}에 취소되었습니다.`
+            : '이미 취소된 신청입니다.');
           setCancelButtonState(cancelPageForm, { disabled: true, label: '이미 취소됨' });
           return;
         }
         setStatus(cancelPageStatus, '정보를 확인한 뒤 "등록 취소" 버튼을 눌러주세요.');
         setCancelButtonState(cancelPageForm, { disabled: false, label: '등록 취소' });
       } catch (error) {
-        if (error?.statusCode === 404) {
-          setStatus(cancelPageStatus, '취소 가능한 등록 정보를 찾지 못했습니다. 이메일/취소 코드를 확인해주세요.');
-          setCancelButtonState(cancelPageForm, { disabled: false, label: '등록 취소' });
-          return;
-        }
-        // 링크 진입 시 자동 점검 실패는 치명 오류로 보이지 않게 안내만 노출합니다.
         setStatus(cancelPageStatus, '자동 확인에 실패했습니다. "등록 취소" 버튼을 눌러 다시 시도해주세요.');
         setCancelButtonState(cancelPageForm, { disabled: false, label: '등록 취소' });
         console.warn('Cancel status precheck failed', error);
