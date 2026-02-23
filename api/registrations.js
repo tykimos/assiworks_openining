@@ -22,7 +22,7 @@ module.exports = async (req, res) => {
   if (!authorize(req, res)) return;
 
   try {
-    const supabase = await getSupabaseClient();
+    const supabase = getSupabaseClient();
 
     if (req.method === 'DELETE') {
       const { id, ids } = req.body || {};

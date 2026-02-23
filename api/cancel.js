@@ -17,7 +17,7 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const supabase = await getSupabaseClient();
+    const supabase = getSupabaseClient();
     const { data: registration, error: findError } = await supabase
       .from('registrations')
       .select('id,cancelled_at')

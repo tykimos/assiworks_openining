@@ -25,7 +25,7 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const supabase = await getSupabaseClient();
+    const supabase = getSupabaseClient();
     const cancelToken = crypto.randomBytes(24).toString('hex');
     const normalizedAffiliation = affiliation || company || null;
     const normalizedPosition = position || null;

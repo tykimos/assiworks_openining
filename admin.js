@@ -459,6 +459,19 @@ document.addEventListener('DOMContentLoaded', () => {
     renderInvitations();
   };
 
+  const loadAllData = async () => {
+    const data = await sendAdminRequest({
+      method: 'GET',
+      path: '/api/admin-data',
+      token: adminToken,
+    });
+    registrations = data.registrations || [];
+    invitations = data.invitations || [];
+    renderDashboard();
+    renderInvitations();
+    setStatus(dashboardStatusEl, `등록 ${registrations.length}건 · 초대 ${invitations.length}건`);
+  };
+
   const openInvModal = (invitation = null) => {
     editingInvId = invitation?.id || null;
     if (invModalTitle) invModalTitle.textContent = editingInvId ? '초대 수정' : '초대 추가';
@@ -537,8 +550,7 @@ document.addEventListener('DOMContentLoaded', () => {
     switchView('analytics');
     setStatus(dashboardStatusEl, '데이터를 불러오는 중...');
     try {
-      await Promise.all([loadRegistrations(), loadInvitations()]);
-      setStatus(dashboardStatusEl, `총 ${registrations.length}건을 불러왔습니다.`);
+      await loadAllData();
     } catch (error) {
       adminToken = '';
       sessionStorage.removeItem('adminToken');
@@ -630,9 +642,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   refreshBtn?.addEventListener('click', async () => {
     if (!adminToken) return;
-    setStatus(dashboardStatusEl, '데이터를 새로고침하는 중입니다...');
+    setStatus(dashboardStatusEl, '새로고침 중...');
     try {
-      await Promise.all([loadRegistrations(), loadInvitations()]);
+      await loadAllData();
     } catch (error) {
       setStatus(dashboardStatusEl, error.message || '새로고침에 실패했습니다.', true);
     }
@@ -901,8 +913,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setStatus(dashboardStatusEl, '데이터를 불러오는 중...');
     (async () => {
       try {
-        await Promise.all([loadRegistrations(), loadInvitations()]);
-        setStatus(dashboardStatusEl, `총 ${registrations.length}건을 불러왔습니다.`);
+        await loadAllData();
       } catch {
         adminToken = '';
         sessionStorage.removeItem('adminToken');

@@ -23,7 +23,7 @@ module.exports = async (req, res) => {
   if (!authorize(req, res)) return;
 
   try {
-    const supabase = await getSupabaseClient();
+    const supabase = getSupabaseClient();
 
     if (req.method === 'GET') {
       const { data, error } = await supabase

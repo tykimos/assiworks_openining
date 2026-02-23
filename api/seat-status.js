@@ -13,7 +13,7 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const supabase = await getSupabaseClient();
+    const supabase = getSupabaseClient();
     const { count, error } = await supabase
       .from('registrations')
       .select('id', { count: 'exact', head: true })
