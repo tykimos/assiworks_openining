@@ -844,7 +844,11 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   // Re-init resizers whenever table content changes.
+  let resizeScheduled = false;
+  const tableWraps = document.querySelectorAll('.admin-table-wrap');
+
   const resetAndInitResizers = () => {
+    tableObserver.disconnect();
     document.querySelectorAll('.admin-table').forEach((table) => {
       delete table.dataset.resizersReady;
       table.style.width = '';
@@ -853,11 +857,23 @@ document.addEventListener('DOMContentLoaded', () => {
         th.querySelector('.col-resizer')?.remove();
       });
     });
-    requestAnimationFrame(() => initColumnResizers());
+    requestAnimationFrame(() => {
+      initColumnResizers();
+      tableWraps.forEach((wrap) => {
+        tableObserver.observe(wrap, { childList: true, subtree: true });
+      });
+    });
   };
 
-  const tableObserver = new MutationObserver(() => resetAndInitResizers());
-  document.querySelectorAll('.admin-table-wrap').forEach((wrap) => {
+  const tableObserver = new MutationObserver(() => {
+    if (resizeScheduled) return;
+    resizeScheduled = true;
+    requestAnimationFrame(() => {
+      resizeScheduled = false;
+      resetAndInitResizers();
+    });
+  });
+  tableWraps.forEach((wrap) => {
     tableObserver.observe(wrap, { childList: true, subtree: true });
   });
 
