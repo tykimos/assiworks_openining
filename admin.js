@@ -762,11 +762,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const id = regBtn.dataset.id;
       const inv = invitations.find((item) => String(item.id) === id);
       if (!inv) return;
-      if (!inv.email) {
-        window.alert('이메일이 없는 초대는 등록할 수 없습니다.');
-        return;
-      }
-      if (!window.confirm(`${inv.name}님을 등록 처리하시겠습니까?`)) return;
+      if (!inv.email) return;
       regBtn.disabled = true;
       regBtn.textContent = '처리중...';
       try {
