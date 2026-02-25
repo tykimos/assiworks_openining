@@ -69,8 +69,8 @@ module.exports = async (req, res) => {
       });
     } catch (emailError) {
       console.error('Email send error', emailError);
-      return res.status(502).json({
-        ok: false,
+      return res.status(200).json({
+        ok: true,
         registered: true,
         registrationId: insertedRow?.id || null,
         cancelToken,

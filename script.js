@@ -407,36 +407,29 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     try {
-      const cancelToken = generateCancelToken();
-      const { data: insertedRow, error: insertError } = await sb
-        .from('registrations')
-        .insert({
-          email: payload.email,
-          name: payload.name,
-          affiliation: payload.affiliation || null,
-          position: payload.position || null,
-          note: payload.message || null,
-          cancel_token: cancelToken,
-        })
-        .select('id')
-        .single();
-      if (insertError) throw insertError;
+      const response = await fetch('/api/register', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const result = await response.json();
+
+      if (!result.registered) {
+        throw new Error(result.message || '등록에 실패했습니다.');
+      }
 
       registerProgress?.setStep(1, 'success');
       registerProgress?.setStep(2, 'active');
 
-      const cancelLink = `${window.location.origin}/cancel.html?token=${cancelToken}&email=${encodeURIComponent(payload.email)}`;
-      let emailSuccess = false;
-      try {
-        await sendRegistrationEmail({ to: payload.email, name: payload.name, cancelLink });
-        emailSuccess = true;
-      } catch (emailError) {
-        console.warn('Email send failed', emailError);
-      }
+      const emailSuccess = result.email?.success === true;
 
       setRegisterProgressByResult({ registered: true, emailSuccess, completed: true });
       const nameValue = payload.name?.toString().trim() || '게스트';
-      setStatus(registerStatus, `${nameValue}님, 등록 요청을 완료했습니다. 이메일을 확인해주세요.`);
+      if (emailSuccess) {
+        setStatus(registerStatus, `${nameValue}님, 등록이 완료되었습니다. 확인 이메일을 발송했으니 메일함을 확인해주세요.`);
+      } else {
+        setStatus(registerStatus, `${nameValue}님, 등록은 완료되었지만 확인 이메일 전송에 실패했습니다. 이메일을 받지 못하셔도 등록은 정상 처리되었습니다.`, true);
+      }
       registerForm.reset();
       refreshSeatProgress();
     } catch (error) {
