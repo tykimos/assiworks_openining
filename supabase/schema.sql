@@ -34,7 +34,9 @@ begin
   end if;
 end $$;
 
+alter table public.registrations add column if not exists chat_token text;
 create unique index if not exists registrations_cancel_token_key on public.registrations (cancel_token);
+create unique index if not exists registrations_chat_token_key on public.registrations (chat_token);
 create index if not exists registrations_email_idx on public.registrations ((lower(email)));
 create index if not exists registrations_created_at_idx on public.registrations (created_at desc);
 

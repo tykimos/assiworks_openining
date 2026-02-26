@@ -772,6 +772,7 @@ document.addEventListener('DOMContentLoaded', () => {
       regBtn.textContent = '처리중...';
       try {
         const cancelToken = crypto.randomUUID();
+        const chatToken = crypto.randomUUID();
         const { data: regData, error: regError } = await sb
           .from('registrations')
           .insert({
@@ -780,6 +781,7 @@ document.addEventListener('DOMContentLoaded', () => {
             affiliation: inv.affiliation || '',
             position: inv.position || '',
             cancel_token: cancelToken,
+            chat_token: chatToken,
           })
           .select('id')
           .single();

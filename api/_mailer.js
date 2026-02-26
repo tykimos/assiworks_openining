@@ -23,20 +23,32 @@ const buildGoogleCalendarLink = () => {
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
 };
 
-const buildRegistrationBody = ({ name, cancelLink }) => {
+const buildRegistrationBody = ({ name, cancelLink, chatLink }) => {
   const safeName = name?.trim() || '게스트';
   const googleCalendarLink = buildGoogleCalendarLink();
-  return [
+  const lines = [
     `${safeName}님, AssiWorks Opening 사전 등록이 완료되었습니다.`,
     '',
     '아래 링크를 통해 구글 캘린더에 일정을 등록하실 수 있습니다.',
     googleCalendarLink,
+  ];
+
+  if (chatLink) {
+    lines.push(
+      '',
+      '아래 링크를 통해 행사 안내 에이전트와 대화하실 수 있습니다.',
+      chatLink,
+    );
+  }
+
+  lines.push(
     '',
     '일정에 변동이 있을 경우 아래 링크를 통해 등록을 취소하실 수 있습니다.',
     cancelLink,
     '',
     '감사합니다.',
-  ].join('\n');
+  );
+  return lines.join('\n');
 };
 
 const isSenderVerificationError = (error) => {
@@ -83,7 +95,7 @@ const sendWithPath = async (baseUrl, path, payload) => {
   return { endpoint, mailResults: Array.isArray(parsed) ? parsed : [] };
 };
 
-const sendRegistrationEmail = async ({ to, name, cancelLink }) => {
+const sendRegistrationEmail = async ({ to, name, cancelLink, chatLink }) => {
   const baseUrl = process.env.SEND_MAIL_BASE_URL || DEFAULT_SEND_MAIL_BASE_URL;
   const preferredSender = process.env.REGISTRATION_FROM_EMAIL || DEFAULT_SENDER_EMAIL;
   const senderCandidates = Array.from(new Set([preferredSender, DEFAULT_SENDER_EMAIL]));
@@ -94,7 +106,7 @@ const sendRegistrationEmail = async ({ to, name, cancelLink }) => {
       senderEmail,
       recipientEmails: [to],
       subject: 'AssiWorks Opening 등록이 완료되었습니다',
-      body: buildRegistrationBody({ name, cancelLink }),
+      body: buildRegistrationBody({ name, cancelLink, chatLink }),
     };
 
     let lastNotFoundError = null;

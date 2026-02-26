@@ -27,6 +27,7 @@ module.exports = async (req, res) => {
   try {
     const supabase = getSupabaseClient();
     const cancelToken = crypto.randomBytes(24).toString('hex');
+    const chatToken = crypto.randomBytes(24).toString('hex');
     const normalizedAffiliation = affiliation || company || null;
     const normalizedPosition = position || null;
 
@@ -39,6 +40,7 @@ module.exports = async (req, res) => {
         position: normalizedPosition,
         note: message || null,
         cancel_token: cancelToken,
+        chat_token: chatToken,
       })
       .select('id')
       .single();
@@ -52,15 +54,18 @@ module.exports = async (req, res) => {
     const cancelLink = `${origin.replace(/\/$/, '')}/cancel.html?token=${cancelToken}&email=${encodeURIComponent(
       email
     )}`;
+    const chatLink = `https://events.aifactory.space/?token=${chatToken}`;
 
     try {
-      const emailResult = await sendRegistrationEmail({ to: email, name, cancelLink });
+      const emailResult = await sendRegistrationEmail({ to: email, name, cancelLink, chatLink });
       return res.status(200).json({
         ok: true,
         registered: true,
         registrationId: insertedRow?.id || null,
         cancelToken,
         cancelLink,
+        chatToken,
+        chatLink,
         email: {
           success: true,
           endpoint: emailResult?.endpoint || null,
@@ -75,6 +80,8 @@ module.exports = async (req, res) => {
         registrationId: insertedRow?.id || null,
         cancelToken,
         cancelLink,
+        chatToken,
+        chatLink,
         email: {
           success: false,
           endpoint: emailError?.endpoint || null,
