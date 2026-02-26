@@ -38,6 +38,7 @@
             <button type="button" class="sidebar-menu-btn is-active" data-view-target="analytics" title="대시보드">대시보드</button>
             <button type="button" class="sidebar-menu-btn" data-view-target="registrations" title="등록 조회">등록 조회</button>
             <button type="button" class="sidebar-menu-btn" data-view-target="invitations" title="초대관리">초대관리</button>
+            <button type="button" class="sidebar-menu-btn" data-view-target="settings" title="설정">설정</button>
           </nav>
         </aside>
 
@@ -284,6 +285,25 @@
                 <p id="inv-form-status" class="admin-status" role="status"></p>
               </div>
             </div>
+          </section>
+
+          <section id="admin-view-settings" class="admin-view">
+            <article class="admin-card">
+              <h4>행사 설정</h4>
+              <form id="settings-form" class="inv-form">
+                <div class="inv-form-grid">
+                  <div class="field">
+                    <label for="setting-seat-capacity">등록 정원</label>
+                    <input id="setting-seat-capacity" name="seat_capacity" type="number" min="1" max="9999" required />
+                    <p class="field-hint">사전 등록 가능한 최대 인원 수를 설정합니다.</p>
+                  </div>
+                </div>
+                <div class="inv-form-actions">
+                  <button type="submit" class="primary">저장</button>
+                </div>
+              </form>
+              <p id="settings-status" class="admin-status" role="status"></p>
+            </article>
           </section>
         </section>
       </section>

@@ -169,7 +169,7 @@ const generateCancelToken = () => {
 };
 
 document.addEventListener('DOMContentLoaded', async () => {
-  loadCopyDeck();
+  await loadCopyDeck();
 
   const registerForm = document.getElementById('register-form');
   const registerStatus = document.querySelector('.form-status');
@@ -245,15 +245,41 @@ document.addEventListener('DOMContentLoaded', async () => {
     seatProgressCount.textContent = '좌석 현황을 확인 중입니다.';
   };
 
-  const refreshSeatProgress = async () => {
-    if (!seatProgress) return;
+  const fetchSeatCapacity = async () => {
     try {
-      const { count, error } = await sb
-        .from('registrations')
-        .select('id', { count: 'exact', head: true })
-        .is('cancelled_at', null);
-      if (error) throw error;
-      updateSeatProgress({ capacity: DEFAULT_SEAT_CAPACITY, activeCount: count || 0 });
+      const { data, error } = await sb
+        .from('site_settings')
+        .select('value')
+        .eq('key', 'seat_capacity')
+        .single();
+      if (!error && data && Number(data.value) > 0) return Number(data.value);
+    } catch {}
+    return DEFAULT_SEAT_CAPACITY;
+  };
+
+  const replaceSeatCapacityPlaceholders = (capacity) => {
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    while (walker.nextNode()) {
+      const node = walker.currentNode;
+      if (node.textContent.includes('{seat_capacity}')) {
+        node.textContent = node.textContent.replaceAll('{seat_capacity}', String(capacity));
+      }
+    }
+  };
+
+  const refreshSeatProgress = async () => {
+    try {
+      const [capacity, countResult] = await Promise.all([
+        fetchSeatCapacity(),
+        sb.from('registrations')
+          .select('id', { count: 'exact', head: true })
+          .is('cancelled_at', null),
+      ]);
+      replaceSeatCapacityPlaceholders(capacity);
+      if (seatProgress) {
+        if (countResult.error) throw countResult.error;
+        updateSeatProgress({ capacity, activeCount: countResult.count || 0 });
+      }
     } catch (error) {
       console.warn('Seat status fetch failed', error);
       setSeatProgressFallback();

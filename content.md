@@ -13,7 +13,7 @@ Welcome to AssiWorks
 - Date|2026년 3월 3일
 - Time|14:00 - 17:00 (KST)
 - Place|서울 종로구 광화문 한국Microsoft 본사 13층
-- Seats|100명 한정
+- Seats|{seat_capacity}명 한정
 
 ## agenda
 - 키노트 · Product Roadmap
@@ -33,7 +33,7 @@ Opening Seats
 사전 등록
 
 ## register-lead
-100명 한정 · 등록 순으로 초대장을 보내드립니다.
+{seat_capacity}명 한정 · 등록 순으로 초대장을 보내드립니다.
 
 ## form-email-label
 이메일

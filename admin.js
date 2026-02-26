@@ -57,6 +57,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const invStatNo = document.getElementById('inv-stat-no');
   const invStatRegistered = document.getElementById('inv-stat-registered');
 
+  const settingsForm = document.getElementById('settings-form');
+  const settingSeatCapacity = document.getElementById('setting-seat-capacity');
+  const settingsStatus = document.getElementById('settings-status');
+
   let adminToken = sessionStorage.getItem('adminToken') || '';
   let registrations = [];
   let filteredRegistrations = [];
@@ -464,6 +468,7 @@ document.addEventListener('DOMContentLoaded', () => {
         .select('*')
         .order('created_at', { ascending: false })
         .limit(500),
+      loadSettings(),
     ]);
     if (regResult.error) throw regResult.error;
     if (invResult.error) throw invResult.error;
@@ -849,6 +854,44 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (error) {
       setStatus(dashboardStatusEl, error.message || '선택 삭제에 실패했습니다.', true);
       syncInvSelectionUI();
+    }
+  });
+
+  /* ============================================================
+     Settings – load & save
+     ============================================================ */
+
+  const loadSettings = async () => {
+    try {
+      const { data, error } = await sb
+        .from('site_settings')
+        .select('key, value');
+      if (error) throw error;
+      const settings = {};
+      (data || []).forEach((row) => { settings[row.key] = row.value; });
+      if (settingSeatCapacity && settings.seat_capacity) {
+        settingSeatCapacity.value = settings.seat_capacity;
+      }
+    } catch (error) {
+      console.warn('Settings load failed', error);
+    }
+  };
+
+  settingsForm?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const value = settingSeatCapacity?.value?.trim();
+    if (!value || Number(value) < 1) {
+      setStatus(settingsStatus, '1 이상의 숫자를 입력해주세요.', true);
+      return;
+    }
+    try {
+      const { error } = await sb
+        .from('site_settings')
+        .upsert({ key: 'seat_capacity', value: String(value) }, { onConflict: 'key' });
+      if (error) throw error;
+      setStatus(settingsStatus, `등록 정원이 ${value}명으로 변경되었습니다.`);
+    } catch (error) {
+      setStatus(settingsStatus, error.message || '설정 저장에 실패했습니다.', true);
     }
   });
 

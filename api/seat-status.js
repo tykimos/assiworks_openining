@@ -1,7 +1,7 @@
 const { getSupabaseClient } = require('./_supabase');
 const { applyCors } = require('./_cors');
 
-const MAX_SEATS = 100;
+const DEFAULT_MAX_SEATS = 100;
 
 module.exports = async (req, res) => {
   if (applyCors(req, res)) {
@@ -14,21 +14,31 @@ module.exports = async (req, res) => {
 
   try {
     const supabase = getSupabaseClient();
-    const { count, error } = await supabase
-      .from('registrations')
-      .select('id', { count: 'exact', head: true })
-      .is('cancelled_at', null);
 
-    if (error) {
-      throw error;
-    }
+    const [countResult, settingResult] = await Promise.all([
+      supabase
+        .from('registrations')
+        .select('id', { count: 'exact', head: true })
+        .is('cancelled_at', null),
+      supabase
+        .from('site_settings')
+        .select('value')
+        .eq('key', 'seat_capacity')
+        .single(),
+    ]);
 
-    const activeCount = Number(count) || 0;
-    const remaining = Math.max(0, MAX_SEATS - activeCount);
+    if (countResult.error) throw countResult.error;
+
+    const maxSeats = (settingResult.data && Number(settingResult.data.value) > 0)
+      ? Number(settingResult.data.value)
+      : DEFAULT_MAX_SEATS;
+
+    const activeCount = Number(countResult.count) || 0;
+    const remaining = Math.max(0, maxSeats - activeCount);
 
     return res.status(200).json({
       ok: true,
-      capacity: MAX_SEATS,
+      capacity: maxSeats,
       activeCount,
       remaining,
       full: remaining === 0,

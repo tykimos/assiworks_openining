@@ -105,3 +105,24 @@ create policy "Anyone can delete registrations"
 alter table public.invitations enable row level security;
 create policy "Full access to invitations"
   on public.invitations for all using (true) with check (true);
+
+-- ============================================================
+-- site_settings table for configurable options (e.g. seat capacity)
+-- ============================================================
+
+create table if not exists public.site_settings (
+  key   text primary key,
+  value text not null
+);
+
+insert into public.site_settings (key, value)
+values ('seat_capacity', '100')
+on conflict (key) do nothing;
+
+alter table public.site_settings enable row level security;
+create policy "Anyone can read site_settings"
+  on public.site_settings for select using (true);
+create policy "Anyone can update site_settings"
+  on public.site_settings for update using (true);
+create policy "Anyone can insert site_settings"
+  on public.site_settings for insert with check (true);
