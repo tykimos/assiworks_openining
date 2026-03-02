@@ -151,7 +151,7 @@ const parseStyleClasses = (text, tokenMap) => {
       remaining = remaining.slice(cm[0].length);
     }
     if (allRawClasses.length === 0) {
-      if (pendingClose && !line.trim()) { result.push(pendingClose); pendingClose = null; }
+      if (pendingClose && (!line.trim() || /^__DIR_\d+__$/.test(line.trim()))) { result.push(pendingClose); pendingClose = null; }
       result.push(line); continue;
     }
     if (pendingClose) { result.push(pendingClose); pendingClose = null; }

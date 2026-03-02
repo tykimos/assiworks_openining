@@ -1336,8 +1336,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // No classes on this line
       if (allRawClasses.length === 0) {
-        // Empty line closes pending style block
-        if (pendingClose && !line.trim()) {
+        // Close pending style block before empty lines or directive tokens
+        if (pendingClose && (!line.trim() || /^__DIR_\d+__$/.test(line.trim()))) {
           result.push(pendingClose);
           pendingClose = null;
         }
