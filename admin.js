@@ -61,6 +61,27 @@ document.addEventListener('DOMContentLoaded', () => {
   const settingSeatCapacity = document.getElementById('setting-seat-capacity');
   const settingsStatus = document.getElementById('settings-status');
 
+  // Presentations elements
+  const presListView = document.getElementById('pres-list-view');
+  const presEditorView = document.getElementById('pres-editor-view');
+  const presListEl = document.getElementById('pres-list');
+  const presAddBtn = document.getElementById('pres-add-btn');
+  const presBackBtn = document.getElementById('pres-back-btn');
+  const presTitleInput = document.getElementById('pres-title-input');
+  const presContent = document.getElementById('pres-content');
+  const presSaveBtn = document.getElementById('pres-save-btn');
+  const presPresentBtn = document.getElementById('pres-present-btn');
+  const presPreview = document.getElementById('pres-preview');
+  const presPreviewPane = document.getElementById('pres-preview-pane');
+  const presSaveStatus = document.getElementById('pres-save-status');
+  const presTogglePreview = document.getElementById('pres-toggle-preview');
+  const presViewer = document.getElementById('pres-viewer');
+  const presViewerSlide = document.getElementById('pres-viewer-slide');
+  const presViewerPrev = document.getElementById('pres-viewer-prev');
+  const presViewerNext = document.getElementById('pres-viewer-next');
+  const presViewerCounter = document.getElementById('pres-viewer-counter');
+  const presViewerClose = document.getElementById('pres-viewer-close');
+
   let adminToken = sessionStorage.getItem('adminToken') || '';
   let registrations = [];
   let filteredRegistrations = [];
@@ -69,6 +90,17 @@ document.addEventListener('DOMContentLoaded', () => {
   let filteredInvitations = [];
   let selectedInvIds = new Set();
   let editingInvId = null;
+  let presentations = [];
+  let editingPresId = null;
+  let presUnsaved = false;
+  let presAutoSaveTimer = null;
+  let viewerSlides = [];
+  let viewerIndex = 0;
+  let viewerSlideMetas = [];
+  let viewerDefaultTransition = 'fade';
+  let viewerDirection = 'forward';
+  let viewerFragments = [];   // array of fragment DOM elements for current slide
+  let viewerFragIndex = 0;    // how many fragments have been revealed so far
 
   // Sort state: { key, asc }
   let regSort = { key: null, asc: true };
@@ -117,6 +149,14 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   const switchView = (targetView) => {
+    if (presUnsaved && editingPresId !== null) {
+      if (!window.confirm('저장하지 않은 변경사항이 있습니다. 이동하시겠습니까?')) return;
+      presUnsaved = false;
+      if (presAutoSaveTimer) { clearTimeout(presAutoSaveTimer); presAutoSaveTimer = null; }
+    }
+    if (editingPresId !== null && targetView !== 'presentations') {
+      closePresEditor();
+    }
     sidebarButtons.forEach((button) => {
       button.classList.toggle('is-active', button.dataset.viewTarget === targetView);
     });
@@ -459,7 +499,7 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   const loadAllData = async () => {
-    const [regResult, invResult] = await Promise.all([
+    const [regResult, invResult, presResult] = await Promise.all([
       sb.from('registrations')
         .select('id,name,email,affiliation,position,note,cancelled_at,created_at')
         .order('created_at', { ascending: false })
@@ -468,14 +508,20 @@ document.addEventListener('DOMContentLoaded', () => {
         .select('*')
         .order('created_at', { ascending: false })
         .limit(500),
+      sb.from('presentations')
+        .select('*')
+        .order('sort_order', { ascending: true })
+        .order('created_at', { ascending: false }),
       loadSettings(),
     ]);
     if (regResult.error) throw regResult.error;
     if (invResult.error) throw invResult.error;
     registrations = regResult.data || [];
     invitations = invResult.data || [];
+    presentations = (presResult.error ? [] : presResult.data) || [];
     renderDashboard();
     renderInvitations();
+    renderPresList();
     setStatus(dashboardStatusEl, `등록 ${registrations.length}건 · 초대 ${invitations.length}건`);
   };
 
@@ -684,6 +730,11 @@ document.addEventListener('DOMContentLoaded', () => {
     filteredInvitations = [];
     selectedInvIds.clear();
     editingInvId = null;
+    presentations = [];
+    editingPresId = null;
+    presUnsaved = false;
+    if (presAutoSaveTimer) { clearTimeout(presAutoSaveTimer); presAutoSaveTimer = null; }
+    closePresEditor();
     passwordInput.value = '';
     searchInput.value = '';
     statusFilter.value = 'all';
@@ -772,7 +823,9 @@ document.addEventListener('DOMContentLoaded', () => {
       regBtn.textContent = '처리중...';
       try {
         const cancelToken = crypto.randomUUID();
-        const chatToken = crypto.randomUUID();
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+        let airUserToken = '';
+        for (let i = 0; i < 6; i++) airUserToken += chars[Math.floor(Math.random() * chars.length)];
         const { data: regData, error: regError } = await sb
           .from('registrations')
           .insert({
@@ -781,7 +834,7 @@ document.addEventListener('DOMContentLoaded', () => {
             affiliation: inv.affiliation || '',
             position: inv.position || '',
             cancel_token: cancelToken,
-            chat_token: chatToken,
+            air_user_token: airUserToken,
           })
           .select('id')
           .single();
@@ -856,6 +909,780 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (error) {
       setStatus(dashboardStatusEl, error.message || '선택 삭제에 실패했습니다.', true);
       syncInvSelectionUI();
+    }
+  });
+
+  /* ============================================================
+     Presentations – CRUD, markdown, preview, viewer
+     ============================================================ */
+
+  const loadPresentations = async () => {
+    const { data, error } = await sb
+      .from('presentations')
+      .select('*')
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    presentations = data || [];
+    renderPresList();
+  };
+
+  const renderPresList = () => {
+    if (!presListEl) return;
+    if (!presentations.length) {
+      presListEl.innerHTML = '<p class="pres-empty">발표자료가 없습니다. 새 발표자료를 만들어보세요.</p>';
+      return;
+    }
+    presListEl.innerHTML = presentations.map((p) => {
+      const slideCount = (p.content || '').split(/^-{3,}\s*$/m).length;
+      const updated = formatDateTime(p.updated_at);
+      return `<div class="pres-card">
+        <div class="pres-card-info">
+          <strong>${escapeHtml(p.title || '제목 없음')}</strong>
+          <p>${escapeHtml(updated)} · ${slideCount}장</p>
+        </div>
+        <div class="pres-card-actions">
+          <button type="button" class="admin-btn-add pres-view-btn" data-id="${escapeHtml(p.id)}">보기</button>
+          <button type="button" class="admin-btn-edit pres-edit-btn" data-id="${escapeHtml(p.id)}">편집</button>
+          <button type="button" class="admin-delete pres-delete-btn" data-id="${escapeHtml(p.id)}">삭제</button>
+        </div>
+      </div>`;
+    }).join('');
+  };
+
+  presListEl?.addEventListener('click', async (e) => {
+    const viewBtn = e.target.closest('.pres-view-btn');
+    if (viewBtn) {
+      const p = presentations.find((item) => item.id === viewBtn.dataset.id);
+      if (p) openViewerFromList(p.content || '');
+      return;
+    }
+    const editBtn = e.target.closest('.pres-edit-btn');
+    if (editBtn) {
+      const p = presentations.find((item) => item.id === editBtn.dataset.id);
+      if (p) openPresEditor(p);
+      return;
+    }
+    const deleteBtn = e.target.closest('.pres-delete-btn');
+    if (deleteBtn) {
+      const id = deleteBtn.dataset.id;
+      if (!window.confirm('이 발표자료를 삭제하시겠습니까?')) return;
+      deleteBtn.disabled = true;
+      try {
+        const { error } = await sb.from('presentations').delete().eq('id', id);
+        if (error) throw error;
+        presentations = presentations.filter((item) => item.id !== id);
+        renderPresList();
+      } catch (err) {
+        alert(err.message || '삭제에 실패했습니다.');
+      } finally {
+        deleteBtn.disabled = false;
+      }
+    }
+  });
+
+  presAddBtn?.addEventListener('click', async () => {
+    try {
+      const { data, error } = await sb
+        .from('presentations')
+        .insert({ title: '새 발표자료', content: '# 첫 번째 슬라이드\n\n내용을 입력하세요.\n\n---\n\n# 두 번째 슬라이드\n\n내용을 입력하세요.' })
+        .select()
+        .single();
+      if (error) throw error;
+      presentations.unshift(data);
+      renderPresList();
+      openPresEditor(data);
+    } catch (err) {
+      alert(err.message || '생성에 실패했습니다.');
+    }
+  });
+
+  // Image store: short references in textarea, full base64 stored here
+  const presImageMap = new Map();
+  let presImageCounter = 0;
+
+  const collapseImageData = (text) => {
+    return text.replace(/!\[([^\]]*)\]\((data:image\/[^)]+)\)/g, (_, alt, dataUrl) => {
+      const key = `paste:${presImageCounter++}`;
+      presImageMap.set(key, dataUrl);
+      return `![${alt}](${key})`;
+    });
+  };
+
+  const expandImageRefs = (text) => {
+    return text.replace(/!\[([^\]]*)\]\((paste:\d+)\)/g, (_, alt, key) => {
+      const dataUrl = presImageMap.get(key);
+      return dataUrl ? `![${alt}](${dataUrl})` : `![${alt}](${key})`;
+    });
+  };
+
+  const openPresEditor = (pres) => {
+    editingPresId = pres.id;
+    presUnsaved = false;
+    presImageMap.clear();
+    presImageCounter = 0;
+    if (presTitleInput) presTitleInput.value = pres.title || '';
+    if (presContent) presContent.value = collapseImageData(pres.content || '');
+    if (presSaveStatus) presSaveStatus.textContent = '';
+    presListView?.setAttribute('hidden', '');
+    presEditorView?.removeAttribute('hidden');
+    renderPresPreview();
+  };
+
+  const closePresEditor = () => {
+    if (presAutoSaveTimer) { clearTimeout(presAutoSaveTimer); presAutoSaveTimer = null; }
+    editingPresId = null;
+    presUnsaved = false;
+    presEditorView?.setAttribute('hidden', '');
+    presListView?.removeAttribute('hidden');
+  };
+
+  presBackBtn?.addEventListener('click', () => {
+    if (presUnsaved) {
+      if (!window.confirm('저장하지 않은 변경사항이 있습니다. 목록으로 돌아가시겠습니까?')) return;
+    }
+    closePresEditor();
+  });
+
+  const savePresentation = async () => {
+    if (!editingPresId) return;
+    const title = presTitleInput?.value?.trim() || '제목 없음';
+    const content = expandImageRefs(presContent?.value || '');
+    try {
+      const { error } = await sb
+        .from('presentations')
+        .update({ title, content })
+        .eq('id', editingPresId);
+      if (error) throw error;
+      const idx = presentations.findIndex((p) => p.id === editingPresId);
+      if (idx >= 0) {
+        presentations[idx].title = title;
+        presentations[idx].content = content;
+        presentations[idx].updated_at = new Date().toISOString();
+      }
+      presUnsaved = false;
+      if (presSaveStatus) presSaveStatus.textContent = '저장됨';
+      renderPresList();
+    } catch (err) {
+      if (presSaveStatus) presSaveStatus.textContent = '저장 실패';
+    }
+  };
+
+  presSaveBtn?.addEventListener('click', savePresentation);
+
+  const scheduleAutoSave = () => {
+    presUnsaved = true;
+    if (presSaveStatus) presSaveStatus.textContent = '수정됨 (미저장)';
+    if (presAutoSaveTimer) clearTimeout(presAutoSaveTimer);
+    presAutoSaveTimer = setTimeout(savePresentation, 5000);
+  };
+
+  presTitleInput?.addEventListener('input', scheduleAutoSave);
+  presContent?.addEventListener('input', () => {
+    scheduleAutoSave();
+    renderPresPreview();
+  });
+
+  // Paste image from clipboard — store base64 in map, show short ref in textarea
+  presContent?.addEventListener('paste', (e) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          const key = `paste:${presImageCounter++}`;
+          presImageMap.set(key, reader.result);
+          const md = `![image](${key})`;
+          const start = presContent.selectionStart;
+          const end = presContent.selectionEnd;
+          const text = presContent.value;
+          presContent.value = text.slice(0, start) + md + text.slice(end);
+          presContent.selectionStart = presContent.selectionEnd = start + md.length;
+          scheduleAutoSave();
+          renderPresPreview();
+        };
+        reader.readAsDataURL(file);
+        return;
+      }
+    }
+  });
+
+  // Indent helpers for presentation editor (Tab / Shift+Tab / Enter)
+  // Uses execCommand to preserve browser undo stack (Cmd+Z)
+  presContent?.addEventListener('keydown', (e) => {
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const start = presContent.selectionStart;
+      const end = presContent.selectionEnd;
+      const val = presContent.value;
+
+      if (e.shiftKey) {
+        // Shift+Tab: unindent selected lines
+        const lineStart = val.lastIndexOf('\n', start - 1) + 1;
+        const lineEnd = val.indexOf('\n', end);
+        const blockEnd = lineEnd === -1 ? val.length : lineEnd;
+        const block = val.substring(lineStart, blockEnd);
+        const unindented = block.split('\n').map(l => l.startsWith('  ') ? l.slice(2) : l).join('\n');
+        presContent.setSelectionRange(lineStart, blockEnd);
+        document.execCommand('insertText', false, unindented);
+        const diff = block.length - unindented.length;
+        const firstLineRemoved = val.substring(lineStart, start).startsWith('  ') ? 2 : 0;
+        presContent.selectionStart = Math.max(lineStart, start - firstLineRemoved);
+        presContent.selectionEnd = end - diff;
+      } else if (start !== end) {
+        // Tab with selection: indent all selected lines
+        const lineStart = val.lastIndexOf('\n', start - 1) + 1;
+        const lineEnd = val.indexOf('\n', end);
+        const blockEnd = lineEnd === -1 ? val.length : lineEnd;
+        const block = val.substring(lineStart, blockEnd);
+        const indented = block.split('\n').map(l => '  ' + l).join('\n');
+        presContent.setSelectionRange(lineStart, blockEnd);
+        document.execCommand('insertText', false, indented);
+        presContent.selectionStart = start + 2;
+        presContent.selectionEnd = end + (indented.length - block.length);
+      } else {
+        // Tab without selection: insert 2 spaces
+        document.execCommand('insertText', false, '  ');
+      }
+      scheduleAutoSave();
+      renderPresPreview();
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      const start = presContent.selectionStart;
+      const val = presContent.value;
+      const lineStart = val.lastIndexOf('\n', start - 1) + 1;
+      const currentLine = val.substring(lineStart, start);
+      const indentMatch = currentLine.match(/^( *)/);
+      const indent = indentMatch ? indentMatch[1] : '';
+      document.execCommand('insertText', false, '\n' + indent);
+      scheduleAutoSave();
+      renderPresPreview();
+    }
+  });
+
+  // Warn before leaving with unsaved changes
+  window.addEventListener('beforeunload', (e) => {
+    if (presUnsaved && editingPresId !== null) {
+      e.preventDefault();
+      e.returnValue = '';
+    }
+  });
+
+  /* ---- Simple Markdown parser ---- */
+
+  const safeUrl = (url) => {
+    const decoded = url.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+    if (/^https?:\/\//i.test(decoded) || /^\//.test(decoded) || /^data:image\//i.test(decoded)) return url;
+    return '';
+  };
+
+  /* ---- Extended Markdown: Metadata Parser ---- */
+  const parseMetadata = (slideText) => {
+    const trimmed = (slideText || '').trim();
+    const match = trimmed.match(/^<!--\s*([\s\S]*?)\s*-->/);
+    if (!match) return { meta: { layout: 'default' }, body: trimmed };
+
+    const meta = { layout: 'default' };
+    match[1].split(',').forEach(pair => {
+      const [k, ...vParts] = pair.split(':');
+      if (k && vParts.length) {
+        meta[k.trim()] = vParts.join(':').trim();
+      }
+    });
+
+    const body = trimmed.slice(match[0].length).trim();
+    return { meta, body };
+  };
+
+  /* ---- Extended Markdown: Directive Parser (Indentation-based) ---- */
+  const parseDirectives = (bodyText) => {
+    const lines = (bodyText || '').split('\n');
+    const tokenMap = {};
+    const stack = []; // { directive, indent }
+    let tokenCounter = 0;
+    const result = [];
+    const directiveRe = /^\[(cols-3|cols|col|left|right|center|bottom|box)(?:\s+([^\]]*))?\]$/;
+
+    for (const line of lines) {
+      // Empty / whitespace-only lines pass through
+      if (!line.trim()) {
+        result.push('');
+        continue;
+      }
+
+      const leadingSpaces = line.match(/^( *)/)[1].length;
+      const indent = Math.floor(leadingSpaces / 2);
+      const stripped = line.trim();
+
+      // Close directives whose indent >= current line's indent
+      while (stack.length > 0 && stack[stack.length - 1].indent >= indent) {
+        stack.pop();
+        const token = `__DIR_${tokenCounter++}__`;
+        tokenMap[token] = '</div>';
+        result.push(token);
+      }
+
+      const m = stripped.match(directiveRe);
+      if (m) {
+        const directive = m[1];
+        const args = (m[2] || '').trim();
+        let html = '';
+
+        if (directive === 'cols') {
+          const ratioMatch = args.match(/^(\d+):(\d+)$/);
+          html = ratioMatch
+            ? `<div class="slide-cols" style="grid-template-columns: ${ratioMatch[1]}fr ${ratioMatch[2]}fr;">`
+            : '<div class="slide-cols">';
+        } else if (directive === 'cols-3') {
+          html = '<div class="slide-cols-3">';
+        } else if (directive === 'left' || directive === 'right' || directive === 'col') {
+          const parent = stack.length ? stack[stack.length - 1].directive : null;
+          if (directive === 'left') {
+            html = '<div class="slide-col-left">';
+          } else if (directive === 'right') {
+            html = (parent === 'cols' || parent === 'cols-3')
+              ? '<div class="slide-col-right">'
+              : '<div class="slide-align-right">';
+          } else {
+            html = '<div class="slide-col">';
+          }
+        } else if (directive === 'center') {
+          html = '<div class="slide-align-center">';
+        } else if (directive === 'bottom') {
+          const modifiers = args ? args.split(/\s+/) : [];
+          const classes = ['slide-align-bottom'];
+          modifiers.forEach(mod => { if (mod === 'right') classes.push('slide-align-right'); });
+          html = `<div class="${classes.join(' ')}">`;
+        } else if (directive === 'box') {
+          const modifiers = args ? args.split(/\s+/).filter(Boolean) : [];
+          const classes = ['slide-box', ...modifiers.map(mod => `slide-box-${mod}`)];
+          html = `<div class="${classes.join(' ')}">`;
+        }
+
+        const token = `__DIR_${tokenCounter++}__`;
+        tokenMap[token] = html;
+        result.push(token);
+        stack.push({ directive, indent });
+      } else {
+        // Content line — output without leading indentation
+        result.push(stripped);
+      }
+    }
+
+    // Close remaining stack items
+    while (stack.length > 0) {
+      stack.pop();
+      const token = `__DIR_${tokenCounter++}__`;
+      tokenMap[token] = '</div>';
+      result.push(token);
+    }
+
+    return { text: result.join('\n'), tokenMap };
+  };
+
+  /* ---- Extended Markdown: Style Class Parser (Placeholder Tokens) ---- */
+  const slideClassMap = {
+    '.large': 'slide-text-large',
+    '.small': 'slide-text-small',
+    '.muted': 'slide-text-muted',
+    '.accent': 'slide-text-accent',
+    '.orange': 'slide-text-orange',
+    '.center': 'slide-text-center',
+    '.gradient': 'slide-text-gradient',
+    '.glow': 'slide-text-glow',
+    '.xl': 'slide-text-xl',
+    '.xxl': 'slide-text-xxl',
+    '.bold': 'slide-text-bold',
+    '.light': 'slide-text-light',
+    '.spacer': 'slide-spacer',
+    '.spacer-lg': 'slide-spacer-lg',
+    '.spacer-xl': 'slide-spacer-xl',
+    '.spacer-sm': 'slide-spacer-sm',
+    '.fade-in': 'slide-frag',
+    '.fade-up': 'slide-fade-up',
+    '.scale-in': 'slide-scale-in',
+    '.white': 'slide-text-white',
+    '.blue': 'slide-text-blue',
+    '.sub': 'slide-text-sub',
+  };
+
+  const mapClasses = (rawClasses) => rawClasses.map(cls => slideClassMap[cls] || (!cls.startsWith('.') ? cls : '')).filter(Boolean);
+
+  const parseStyleClasses = (text, tokenMap) => {
+    const lines = (text || '').split('\n');
+    let tokenCounter = 0;
+    // Find next available STYLE counter
+    while (tokenMap[`__STYLE_${tokenCounter}__`]) tokenCounter++;
+    const result = [];
+
+    const classMap = slideClassMap;
+    let pendingClose = null; // close token for an open style block
+
+    for (const line of lines) {
+      let remaining = line;
+      const allRawClasses = [];
+
+      // Repeatedly match {.class} blocks at start of remaining string
+      const classBlockRe = /^\{((?:\.[a-zA-Z0-9_-]+(?:\s+)?)+(?:\s+[a-zA-Z0-9_-]+)*)\}\s*/;
+      let cm;
+      while ((cm = remaining.match(classBlockRe))) {
+        allRawClasses.push(...cm[1].trim().split(/\s+/));
+        remaining = remaining.slice(cm[0].length);
+      }
+
+      // No classes on this line
+      if (allRawClasses.length === 0) {
+        // Empty line closes pending style block
+        if (pendingClose && !line.trim()) {
+          result.push(pendingClose);
+          pendingClose = null;
+        }
+        result.push(line);
+        continue;
+      }
+
+      // Has classes — close any pending block first
+      if (pendingClose) {
+        result.push(pendingClose);
+        pendingClose = null;
+      }
+
+      const rawClasses = allRawClasses;
+      const textContent = remaining;
+
+      // Map class names to CSS classes
+      const cssClasses = [];
+      let isSpacer = false;
+
+      for (const cls of rawClasses) {
+        if (cls === '.spacer' || cls === '.spacer-lg' || cls === '.spacer-xl' || cls === '.spacer-sm') {
+          isSpacer = true;
+          cssClasses.push(classMap[cls]);
+        } else if (classMap[cls]) {
+          cssClasses.push(classMap[cls]);
+        } else if (!cls.startsWith('.')) {
+          // Non-dot-prefixed modifiers like delay-200
+          cssClasses.push(cls);
+        }
+      }
+
+      const classStr = cssClasses.join(' ');
+
+      if (isSpacer) {
+        // Self-closing spacer div
+        const token = `__STYLE_${tokenCounter++}__`;
+        tokenMap[token] = `<div class="${classStr}"></div>`;
+        result.push(token);
+      } else if (!textContent) {
+        // Style-only line: open block, wrap following content until next style/empty
+        const openToken = `__STYLE_${tokenCounter++}__`;
+        const closeToken = `__STYLE_${tokenCounter++}__`;
+        tokenMap[openToken] = `<div class="${classStr}">`;
+        tokenMap[closeToken] = '</div>';
+        result.push(openToken);
+        pendingClose = closeToken;
+      } else {
+        // Inline: wrap text content on this line only
+        const openToken = `__STYLE_${tokenCounter++}__`;
+        const closeToken = `__STYLE_${tokenCounter++}__`;
+        tokenMap[openToken] = `<div class="${classStr}">`;
+        tokenMap[closeToken] = '</div>';
+        result.push(`${openToken}${textContent}${closeToken}`);
+      }
+    }
+
+    // Close any remaining pending block
+    if (pendingClose) {
+      result.push(pendingClose);
+      pendingClose = null;
+    }
+
+    return { text: result.join('\n'), tokenMap };
+  };
+
+  /* ---- Extended Markdown: Restore Placeholder Tokens ---- */
+  const restorePlaceholders = (html, tokenMap) => {
+    for (const [token, replacement] of Object.entries(tokenMap)) {
+      html = html.split(token).join(replacement);
+    }
+    // Clean up <p> wrapping around block elements
+    html = html.replace(/<p>\s*(<div[\s>])/g, '$1');
+    html = html.replace(/(<\/div>)\s*<\/p>/g, '$1');
+    // Clean up <br\/> adjacent to divs
+    html = html.replace(/<br\/>\s*(<div[\s>])/g, '$1');
+    html = html.replace(/(<\/div>)\s*<br\/>/g, '$1');
+    return html;
+  };
+
+  const renderMarkdown = (text) => {
+    let html = escapeHtml(text);
+
+    // Code blocks (``` ... ```)
+    html = html.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) =>
+      `<pre><code>${code}</code></pre>`
+    );
+
+    // Inline code
+    html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+    // Images (only allow http/https/relative URLs)
+    html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_, alt, src) => {
+      const safe = safeUrl(src);
+      return safe ? `<img src="${safe}" alt="${alt}" class="slide-img" />` : alt;
+    });
+
+    // Links (only allow http/https/relative URLs)
+    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, label, href) => {
+      const safe = safeUrl(href);
+      return safe ? `<a href="${safe}" target="_blank" rel="noopener">${label}</a>` : label;
+    });
+
+    // Headers
+    html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+    html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+    html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+
+    // Horizontal rules (*** or ___ but NOT ---) — must run BEFORE bold/italic
+    // so that standalone *** on a line isn't consumed by italic regex
+    html = html.replace(/^(\*{3,}|_{3,})\s*$/gm, '<hr/>');
+
+    // Bold & italic
+    html = html.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
+    html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+
+    // Inline style: {.class1 .class2}(text) → <span class="..." style="...">text</span>
+    html = html.replace(/\{((?:\.[a-zA-Z0-9_-]+(?:\s+)?)+(?:\s+[a-zA-Z0-9_-]+)*)\}\(([^)]+)\)/g, (_, rawCls, content) => {
+      const cssClasses = mapClasses(rawCls.trim().split(/\s+/));
+      return `<span class="slide-inline-styled ${cssClasses.join(' ')}">${content}</span>`;
+    });
+
+    // Unordered list items
+    html = html.replace(/^[-*] (.+)$/gm, '<li>$1</li>');
+    html = html.replace(/((?:<li>.*<\/li>\n?)+)/g, '<ul>$1</ul>');
+
+    // Ordered list items
+    html = html.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
+
+    // Paragraphs: convert double newlines
+    html = html.replace(/\n{2,}/g, '</p><p>');
+    // Single newlines to <br>
+    html = html.replace(/\n/g, '<br/>');
+
+    // Remove stray <br/> between list items
+    html = html.replace(/<\/li>\s*<br\/>\s*<li>/g, '</li><li>');
+
+    html = `<p>${html}</p>`;
+    // Clean up empty paragraphs
+    html = html.replace(/<p>\s*<\/p>/g, '');
+    html = html.replace(/<p>\s*(<h[123]>)/g, '$1');
+    html = html.replace(/(<\/h[123]>)\s*<\/p>/g, '$1');
+    html = html.replace(/<p>\s*(<ul>)/g, '$1');
+    html = html.replace(/(<\/ul>)\s*<\/p>/g, '$1');
+    html = html.replace(/<p>\s*(<pre>)/g, '$1');
+    html = html.replace(/(<\/pre>)\s*<\/p>/g, '$1');
+    html = html.replace(/<p>\s*(<hr\/>)/g, '$1');
+    html = html.replace(/(<hr\/>)\s*<\/p>/g, '$1');
+    html = html.replace(/<p>\s*(<img )/g, '$1');
+
+    // Wrap consecutive slide-img tags in a flex row for side-by-side display
+    html = html.replace(
+      /(<img\s[^>]*class="slide-img"[^>]*\/?>)\s*(?:<br\s*\/?>)?\s*(<img\s[^>]*class="slide-img"[^>]*\/?>)/g,
+      '<div class="slide-images-row">$1$2</div>'
+    );
+
+    return html;
+  };
+
+  const splitSlides = (text) => {
+    return (text || '').split(/^-{3,}\s*$/m).map((s) => s.trim());
+  };
+
+  /* ---- Extended Markdown: Unified Rendering Pipeline ---- */
+  const renderSlide = (slideText) => {
+    const { meta, body } = parseMetadata(slideText);
+    const dir = parseDirectives(body);
+    const sty = parseStyleClasses(dir.text, dir.tokenMap);
+    let html = renderMarkdown(sty.text);
+    html = restorePlaceholders(html, sty.tokenMap);
+    return { meta, html };
+  };
+
+  const renderPresPreview = () => {
+    if (!presPreview) return;
+    const slides = splitSlides(expandImageRefs(presContent?.value || ''));
+    presPreview.innerHTML = slides.map((slide, i) => {
+      const { meta, html } = renderSlide(slide);
+      const layoutClass = meta.layout !== 'default' ? ` slide-layout-${meta.layout}` : '';
+      const bgStyle = meta.bg ? ` style="background-color: ${escapeHtml(meta.bg)};"` : '';
+      const extraClass = meta.class ? ` ${escapeHtml(meta.class)}` : '';
+      return `<div class="pres-slide-card${layoutClass}${extraClass}"${bgStyle}>
+        <div class="pres-slide-number">${i + 1}</div>
+        <div class="pres-slide-content">${html}</div>
+      </div>`;
+    }).join('');
+  };
+
+  // Mobile preview toggle
+  presTogglePreview?.addEventListener('click', () => {
+    presPreviewPane?.classList.toggle('pres-preview-visible');
+  });
+
+  /* ---- Fullscreen Viewer ---- */
+
+  const openViewer = () => {
+    const content = expandImageRefs(presContent?.value || '');
+    openViewerFromList(content);
+  };
+
+  const openViewerFromList = (content) => {
+    viewerSlides = splitSlides(content);
+    if (!viewerSlides.length) viewerSlides = [''];
+    viewerIndex = 0;
+    viewerDirection = 'forward';
+
+    // Pre-parse metadata for all slides
+    viewerSlideMetas = viewerSlides.map(s => parseMetadata(s).meta);
+
+    // Read default-transition from first slide's metadata
+    viewerDefaultTransition = viewerSlideMetas[0]?.['default-transition'] || 'fade';
+
+    renderViewerSlide();
+    presViewer?.removeAttribute('hidden');
+    document.body.style.overflow = 'hidden';
+    // Request browser fullscreen
+    const el = presViewer || document.documentElement;
+    const rfs = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen;
+    if (rfs) rfs.call(el).catch(() => {});
+  };
+
+  const closeViewer = () => {
+    presViewer?.setAttribute('hidden', '');
+    document.body.style.overflow = '';
+    // Exit browser fullscreen if active
+    if (document.fullscreenElement || document.webkitFullscreenElement) {
+      const efs = document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen;
+      if (efs) efs.call(document).catch(() => {});
+    }
+  };
+
+  const renderViewerSlide = () => {
+    if (!presViewerSlide) return;
+    const { meta, html } = renderSlide(viewerSlides[viewerIndex] || '');
+
+    // 1. Reset classes
+    presViewerSlide.className = 'pres-viewer-slide';
+
+    // 2. Apply layout class
+    if (meta.layout && meta.layout !== 'default') {
+      presViewerSlide.classList.add(`slide-layout-${meta.layout}`);
+    }
+    if (meta.class) {
+      meta.class.split(/\s+/).forEach(c => presViewerSlide.classList.add(c));
+    }
+    presViewerSlide.style.backgroundColor = meta.bg || '';
+
+    // 3. Set content
+    presViewerSlide.innerHTML = `<div class="pres-viewer-content">${html}</div>`;
+
+    // 3a. Find and hide all fragments for step-by-step reveal
+    viewerFragments = Array.from(presViewerSlide.querySelectorAll('.slide-frag, .slide-fade-up, .slide-scale-in'));
+    viewerFragIndex = 0;
+    viewerFragments.forEach(el => {
+      el.classList.add('frag-hidden');
+    });
+
+    // 4. Determine transition
+    const transition = viewerSlideMetas?.[viewerIndex]?.transition || viewerDefaultTransition || 'fade';
+    let transClass;
+    if (transition === 'none') {
+      transClass = 'slide-enter-none';
+    } else if (transition === 'slide-left') {
+      transClass = viewerDirection === 'backward' ? 'slide-enter-slide-left-reverse' : 'slide-enter-slide-left';
+    } else if (transition === 'slide-up') {
+      transClass = viewerDirection === 'backward' ? 'slide-enter-slide-up-reverse' : 'slide-enter-slide-up';
+    } else if (transition === 'zoom') {
+      transClass = 'slide-enter-zoom';
+    } else {
+      transClass = 'slide-enter-fade';
+    }
+
+    // 5. Force reflow then apply transition
+    void presViewerSlide.offsetWidth;
+    presViewerSlide.classList.add(transClass);
+
+    if (presViewerCounter) presViewerCounter.textContent = `${viewerIndex + 1} / ${viewerSlides.length}`;
+    if (presViewerPrev) presViewerPrev.style.visibility = viewerIndex > 0 ? 'visible' : 'hidden';
+    if (presViewerNext) presViewerNext.style.visibility = (viewerIndex < viewerSlides.length - 1 || viewerFragments.length > 0) ? 'visible' : 'hidden';
+  };
+
+  const revealNextFragment = () => {
+    if (viewerFragIndex >= viewerFragments.length) return false;
+    const el = viewerFragments[viewerFragIndex];
+    el.classList.remove('frag-hidden');
+    void el.offsetWidth;
+    viewerFragIndex++;
+    return true;
+  };
+
+  const hideLastFragment = () => {
+    if (viewerFragIndex <= 0) return false;
+    viewerFragIndex--;
+    const el = viewerFragments[viewerFragIndex];
+    el.classList.add('frag-hidden');
+    return true;
+  };
+
+  presPresentBtn?.addEventListener('click', openViewer);
+  presViewerClose?.addEventListener('click', closeViewer);
+  presViewerPrev?.addEventListener('click', () => {
+    if (!hideLastFragment()) {
+      if (viewerIndex > 0) { viewerDirection = 'backward'; viewerIndex--; renderViewerSlide(); }
+    }
+  });
+  presViewerNext?.addEventListener('click', () => {
+    if (!revealNextFragment()) {
+      if (viewerIndex < viewerSlides.length - 1) { viewerDirection = 'forward'; viewerIndex++; renderViewerSlide(); }
+    }
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (!presViewer || presViewer.hidden) return;
+    // Don't handle Escape ourselves in fullscreen — the browser exits fullscreen first,
+    // and our fullscreenchange handler will close the viewer.
+    if (e.key === 'Escape') {
+      if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+        closeViewer();
+      }
+      return;
+    }
+    if (e.key === 'ArrowRight') {
+      if (!revealNextFragment()) {
+        if (viewerIndex < viewerSlides.length - 1) { viewerDirection = 'forward'; viewerIndex++; renderViewerSlide(); }
+      }
+    }
+    if (e.key === 'ArrowLeft') {
+      if (!hideLastFragment()) {
+        if (viewerIndex > 0) { viewerDirection = 'backward'; viewerIndex--; renderViewerSlide(); }
+      }
+    }
+  });
+
+  // Close viewer when user exits fullscreen via browser controls
+  document.addEventListener('fullscreenchange', () => {
+    if (!document.fullscreenElement && presViewer && !presViewer.hidden) {
+      presViewer.setAttribute('hidden', '');
+      document.body.style.overflow = '';
+    }
+  });
+  document.addEventListener('webkitfullscreenchange', () => {
+    if (!document.webkitFullscreenElement && presViewer && !presViewer.hidden) {
+      presViewer.setAttribute('hidden', '');
+      document.body.style.overflow = '';
     }
   });
 

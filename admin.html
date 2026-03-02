@@ -39,18 +39,16 @@
             <button type="button" class="sidebar-menu-btn" data-view-target="registrations" title="등록 조회">등록 조회</button>
             <button type="button" class="sidebar-menu-btn" data-view-target="invitations" title="초대관리">초대관리</button>
             <button type="button" class="sidebar-menu-btn" data-view-target="settings" title="설정">설정</button>
+            <button type="button" class="sidebar-menu-btn" data-view-target="presentations" title="발표자료">발표자료</button>
           </nav>
         </aside>
 
         <section class="admin-content">
           <header class="admin-toolbar">
-            <div>
-              <h3>등록 데이터 운영</h3>
-              <p id="admin-dashboard-status" class="admin-dashboard-status">데이터를 준비 중입니다.</p>
-            </div>
-            <div class="admin-toolbar-actions">
-              <button id="admin-refresh-btn" class="secondary admin-btn-secondary" type="button">새로고침</button>
-              <button id="admin-logout-btn" class="secondary admin-btn-secondary" type="button">로그아웃</button>
+            <div class="admin-toolbar-actions" style="margin-left:auto;">
+              <a href="index.html" class="admin-icon-btn" title="메인으로"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8l6-6 6 6"/><path d="M4 7v6a1 1 0 001 1h2v-3h2v3h2a1 1 0 001-1V7"/></svg></a>
+              <button id="admin-refresh-btn" class="admin-icon-btn" type="button" title="새로고침"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 8a5 5 0 01-9 3l-.5.5M3 8a5 5 0 019-3l.5-.5"/><path d="M3 12V11.5H3.5M13 4V4.5H12.5"/></svg></button>
+              <button id="admin-logout-btn" class="admin-icon-btn" type="button" title="로그아웃"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2H4a1 1 0 00-1 1v10a1 1 0 001 1h2M11 11l3-3-3-3M6 8h8"/></svg></button>
             </div>
           </header>
 
@@ -305,9 +303,59 @@
               <p id="settings-status" class="admin-status" role="status"></p>
             </article>
           </section>
+
+          <section id="admin-view-presentations" class="admin-view">
+            <!-- List view -->
+            <div id="pres-list-view">
+              <div class="admin-invitations-header">
+                <h4>발표자료</h4>
+                <button id="pres-add-btn" type="button" class="admin-btn-add">+ 새 발표자료</button>
+              </div>
+              <div id="pres-list" class="pres-list">
+                <p class="pres-empty">발표자료가 없습니다. 새 발표자료를 만들어보세요.</p>
+              </div>
+            </div>
+
+            <!-- Editor view -->
+            <div id="pres-editor-view" class="pres-editor-view" hidden>
+              <div class="pres-editor-toolbar">
+                <button id="pres-back-btn" type="button" class="admin-btn-edit">← 목록</button>
+                <input id="pres-title-input" type="text" class="pres-title-input" placeholder="발표자료 제목" />
+                <span id="pres-save-status" class="pres-save-status"></span>
+                <button id="pres-save-btn" type="button" class="primary pres-toolbar-btn">저장</button>
+                <button id="pres-present-btn" type="button" class="admin-btn-add pres-toolbar-btn">발표보기</button>
+              </div>
+              <div class="pres-split-panel">
+                <div class="pres-editor-pane">
+                  <textarea id="pres-content" class="pres-textarea" placeholder="마크다운으로 슬라이드를 작성하세요.&#10;&#10;슬라이드 구분: ---&#10;&#10;# 제목&#10;**굵게**, *기울임*, `코드`&#10;- 목록&#10;![이미지](url)"></textarea>
+                </div>
+                <div class="pres-preview-pane" id="pres-preview-pane">
+                  <div id="pres-preview" class="pres-preview"></div>
+                </div>
+              </div>
+              <div class="pres-editor-footer">
+                <button id="pres-toggle-preview" type="button" class="admin-btn-edit pres-toggle-preview">프리뷰 토글</button>
+              </div>
+            </div>
+          </section>
         </section>
       </section>
     </main>
+
+    <!-- Fullscreen viewer overlay (outside admin-content to avoid inherited styles) -->
+    <div id="pres-viewer" class="pres-viewer" hidden>
+      <div class="pres-viewer-logos">
+        <img src="images/assiworks_logo.png" alt="AssiWorks" />
+        <img src="images/aifactory_logo.png" alt="AI Factory" />
+      </div>
+      <div class="pres-viewer-slide" id="pres-viewer-slide"></div>
+      <div class="pres-viewer-bar">
+        <button id="pres-viewer-prev" type="button" class="pres-viewer-nav" aria-label="이전 슬라이드">&#8249;</button>
+        <span id="pres-viewer-counter" class="pres-viewer-counter">1 / 1</span>
+        <button id="pres-viewer-next" type="button" class="pres-viewer-nav" aria-label="다음 슬라이드">&#8250;</button>
+        <button id="pres-viewer-close" type="button" class="pres-viewer-close-btn">ESC</button>
+      </div>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase-client.js"></script>

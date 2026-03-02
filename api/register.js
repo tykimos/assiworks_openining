@@ -27,7 +27,10 @@ module.exports = async (req, res) => {
   try {
     const supabase = getSupabaseClient();
     const cancelToken = crypto.randomBytes(24).toString('hex');
-    const chatToken = crypto.randomBytes(24).toString('hex');
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+    let airUserToken = '';
+    for (let i = 0; i < 6; i++) airUserToken += chars[Math.floor(Math.random() * chars.length)];
+
     const normalizedAffiliation = affiliation || company || null;
     const normalizedPosition = position || null;
 
@@ -40,7 +43,7 @@ module.exports = async (req, res) => {
         position: normalizedPosition,
         note: message || null,
         cancel_token: cancelToken,
-        chat_token: chatToken,
+        air_user_token: airUserToken,
       })
       .select('id')
       .single();
@@ -54,18 +57,18 @@ module.exports = async (req, res) => {
     const cancelLink = `${origin.replace(/\/$/, '')}/cancel.html?token=${cancelToken}&email=${encodeURIComponent(
       email
     )}`;
-    const chatLink = `https://events.aifactory.space/?token=${chatToken}`;
+    const airLink = `https://events.aifactory.space/?token=${airUserToken}`;
 
     try {
-      const emailResult = await sendRegistrationEmail({ to: email, name, cancelLink, chatLink });
+      const emailResult = await sendRegistrationEmail({ to: email, name, cancelLink, airLink });
       return res.status(200).json({
         ok: true,
         registered: true,
         registrationId: insertedRow?.id || null,
         cancelToken,
         cancelLink,
-        chatToken,
-        chatLink,
+        airUserToken,
+        airLink,
         email: {
           success: true,
           endpoint: emailResult?.endpoint || null,
@@ -80,8 +83,8 @@ module.exports = async (req, res) => {
         registrationId: insertedRow?.id || null,
         cancelToken,
         cancelLink,
-        chatToken,
-        chatLink,
+        airUserToken,
+        airLink,
         email: {
           success: false,
           endpoint: emailError?.endpoint || null,

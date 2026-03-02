@@ -34,9 +34,9 @@ begin
   end if;
 end $$;
 
-alter table public.registrations add column if not exists chat_token text;
+alter table public.registrations add column if not exists air_user_token text;
 create unique index if not exists registrations_cancel_token_key on public.registrations (cancel_token);
-create unique index if not exists registrations_chat_token_key on public.registrations (chat_token);
+create unique index if not exists registrations_air_user_token_key on public.registrations (air_user_token);
 create index if not exists registrations_email_idx on public.registrations ((lower(email)));
 create index if not exists registrations_created_at_idx on public.registrations (created_at desc);
 
@@ -128,3 +128,29 @@ create policy "Anyone can update site_settings"
   on public.site_settings for update using (true);
 create policy "Anyone can insert site_settings"
   on public.site_settings for insert with check (true);
+
+-- ============================================================
+-- presentations table for the Presentations feature
+-- ============================================================
+
+create table if not exists public.presentations (
+  id          uuid primary key default gen_random_uuid(),
+  title       text not null default '제목 없음',
+  content     text not null default '',
+  sort_order  integer not null default 0,
+  created_at  timestamptz not null default timezone('utc', now()),
+  updated_at  timestamptz not null default timezone('utc', now())
+);
+
+create index if not exists presentations_sort_order_idx on public.presentations (sort_order asc, created_at desc);
+
+drop trigger if exists presentations_set_updated_at on public.presentations;
+
+create trigger presentations_set_updated_at
+before update on public.presentations
+for each row
+execute procedure public.set_updated_at();
+
+alter table public.presentations enable row level security;
+create policy "Full access to presentations"
+  on public.presentations for all using (true) with check (true);
