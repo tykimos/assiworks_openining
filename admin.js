@@ -355,7 +355,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const renderRows = () => {
     if (!rowsEl) return;
     if (!filteredRegistrations.length) {
-      rowsEl.innerHTML = '<tr><td colspan="12">등록 데이터가 없습니다.</td></tr>';
+      rowsEl.innerHTML = '<tr><td colspan="14">등록 데이터가 없습니다.</td></tr>';
       syncSelectionUI();
       return;
     }
@@ -377,6 +377,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const qrBtn = row.reg_token && !row.cancelled_at
           ? `<button type="button" class="admin-btn-edit checkin-qr-btn" data-reg-token="${escapeHtml(row.reg_token)}" data-name="${escapeHtml(row.name)}">QR</button>`
           : '-';
+        const remindedAt = formatDateTime(row.reminded_at);
+        const remindBtn = row.cancelled_at
+          ? '-'
+          : `<button type="button" class="admin-btn-remind" data-id="${escapeHtml(rowId)}">발송</button>`;
         return `<tr>
           <td>
             <input type="checkbox" class="admin-row-select" data-id="${escapeHtml(rowId)}" ${checked} />
@@ -391,6 +395,8 @@ document.addEventListener('DOMContentLoaded', () => {
           <td>${escapeHtml(status)}</td>
           <td>${checkinBadge}</td>
           <td>${qrBtn}</td>
+          <td>${escapeHtml(remindedAt)}</td>
+          <td>${remindBtn}</td>
           <td><button type="button" class="admin-delete" data-id="${escapeHtml(rowId)}">삭제</button></td>
         </tr>`;
       })
@@ -532,7 +538,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const loadAllData = async () => {
     const [regResult, invResult, presResult] = await Promise.all([
       sb.from('registrations')
-        .select('id,name,email,affiliation,position,note,cancelled_at,created_at,checked_in_at,reg_token')
+        .select('id,name,email,affiliation,position,note,cancelled_at,created_at,checked_in_at,reg_token,reminded_at')
         .order('created_at', { ascending: false })
         .limit(200),
       sb.from('invitations')
@@ -592,7 +598,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const loadRegistrations = async () => {
     const { data, error } = await sb
       .from('registrations')
-      .select('id,name,email,affiliation,position,note,cancelled_at,created_at,checked_in_at,reg_token')
+      .select('id,name,email,affiliation,position,note,cancelled_at,created_at,checked_in_at,reg_token,reminded_at')
       .order('created_at', { ascending: false })
       .limit(200);
     if (error) throw error;
@@ -2507,6 +2513,37 @@ document.addEventListener('DOMContentLoaded', () => {
     const regToken = qrBtn.dataset.regToken;
     const name = qrBtn.dataset.name;
     if (regToken) showQRModal(regToken, name);
+  });
+
+  // Remind email button in registrations table
+  rowsEl?.addEventListener('click', async (event) => {
+    const remindBtn = event.target.closest('.admin-btn-remind');
+    if (!remindBtn) return;
+    const id = remindBtn.dataset.id;
+    if (!id) return;
+    remindBtn.disabled = true;
+    remindBtn.textContent = '발송중…';
+    try {
+      const resp = await fetch('/api/remind', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ registrationId: id }),
+      });
+      const data = await resp.json();
+      if (!resp.ok || !data.ok) {
+        alert(data.message || '리마인드 발송 실패');
+        remindBtn.disabled = false;
+        remindBtn.textContent = '발송';
+        return;
+      }
+      const found = registrations.find((r) => String(r.id) === id);
+      if (found) found.reminded_at = data.reminded_at;
+      renderDashboard();
+    } catch {
+      alert('리마인드 발송 중 오류가 발생했습니다.');
+      remindBtn.disabled = false;
+      remindBtn.textContent = '발송';
+    }
   });
 
   /* ============================================================

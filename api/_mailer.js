@@ -137,4 +137,62 @@ const sendRegistrationEmail = async ({ to, name, cancelLink, airLink }) => {
   throw lastError || new Error('메일 API 호출 중 알 수 없는 오류가 발생했습니다.');
 };
 
-module.exports = { sendRegistrationEmail };
+const buildReminderBody = ({ name }) => {
+  const safeName = name?.trim() || '게스트';
+  const googleCalendarLink = buildGoogleCalendarLink();
+  const lines = [
+    `${safeName}님, AssiWorks Opening 행사를 안내드립니다.`,
+    '',
+    '📅 일시: 2026년 3월 3일 (화) 14:00 ~ 17:00',
+    `📍 장소: ${EVENT_LOCATION}`,
+    '',
+    '아래 링크를 통해 구글 캘린더에 일정을 등록하실 수 있습니다.',
+    googleCalendarLink,
+    '',
+    '감사합니다.',
+  ];
+  return lines.join('\n');
+};
+
+const sendReminderEmail = async ({ to, name }) => {
+  const baseUrl = process.env.SEND_MAIL_BASE_URL || DEFAULT_SEND_MAIL_BASE_URL;
+  const preferredSender = process.env.REGISTRATION_FROM_EMAIL || DEFAULT_SENDER_EMAIL;
+  const senderCandidates = Array.from(new Set([preferredSender, DEFAULT_SENDER_EMAIL]));
+  let lastError = null;
+
+  for (const senderEmail of senderCandidates) {
+    const payload = {
+      senderEmail,
+      recipientEmails: [to],
+      subject: 'AssiWorks Opening 행사 안내 리마인드',
+      body: buildReminderBody({ name }),
+    };
+
+    let lastNotFoundError = null;
+    for (const path of SEND_MAIL_PATH_CANDIDATES) {
+      try {
+        const result = await sendWithPath(baseUrl, path, payload);
+        return { ...result, senderEmail };
+      } catch (error) {
+        if (error?.statusCode === 404) {
+          lastNotFoundError = error;
+          continue;
+        }
+        lastError = error;
+        break;
+      }
+    }
+
+    if (lastNotFoundError && !lastError) {
+      lastError = lastNotFoundError;
+    }
+
+    if (!isSenderVerificationError(lastError)) {
+      break;
+    }
+  }
+
+  throw lastError || new Error('메일 API 호출 중 알 수 없는 오류가 발생했습니다.');
+};
+
+module.exports = { sendRegistrationEmail, sendReminderEmail };

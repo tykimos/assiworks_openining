@@ -168,3 +168,6 @@ update public.registrations set reg_token = gen_random_uuid()::text where reg_to
 -- checked_in_at 컬럼 추가
 alter table public.registrations add column if not exists checked_in_at timestamptz;
 create index if not exists registrations_checked_in_at_idx on public.registrations (checked_in_at);
+
+-- reminded_at 컬럼 추가 (리마인드 메일 발송 시각)
+alter table public.registrations add column if not exists reminded_at timestamptz;
