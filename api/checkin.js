@@ -6,11 +6,12 @@ module.exports = async (req, res) => {
     return;
   }
 
-  if (req.method !== 'POST') {
+  if (req.method !== 'POST' && req.method !== 'GET') {
     return res.status(405).json({ ok: false, message: '허용되지 않은 메서드입니다.' });
   }
 
-  const { token } = req.body || {};
+  const source = req.method === 'GET' ? req.query || {} : req.body || {};
+  const { token } = source;
   if (!token) {
     return res.status(400).json({ ok: false, message: '토큰이 필요합니다.' });
   }
@@ -30,8 +31,22 @@ module.exports = async (req, res) => {
     if (registration.cancelled_at) {
       return res.status(400).json({
         ok: false,
-        message: '취소된 등록입니다. 체크인할 수 없습니다.',
+        message: '취소된 등록입니다.',
         cancelled: true,
+      });
+    }
+
+    // GET: return registration info only (no checkin action)
+    if (req.method === 'GET') {
+      return res.status(200).json({
+        ok: true,
+        checked_in_at: registration.checked_in_at || null,
+        registration: {
+          name: registration.name,
+          email: registration.email,
+          affiliation: registration.affiliation,
+          position: registration.position,
+        },
       });
     }
 
