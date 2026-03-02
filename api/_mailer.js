@@ -154,7 +154,7 @@ const buildReminderBody = ({ name, checkinUrl, airLink }) => {
   if (airLink) {
     lines.push(
       '',
-      '🤖 AssiAir에서 공문 요청이나 QR 이미지를 받으실 수 있습니다.',
+      '🤖 AssiAir에서 행사관련 문의나 공문 요청을 하실 수 있습니다.',
       airLink,
     );
   }
