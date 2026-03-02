@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AssiWorks 출석 체크인</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body data-page="checkin">
+    <main class="checkin-page">
+      <section class="checkin-panel">
+        <p class="eyebrow">Check-in</p>
+        <h1>출석 확인</h1>
+        <div id="checkin-loading" class="checkin-loading">
+          <p>체크인 처리 중...</p>
+        </div>
+        <div id="checkin-result" class="checkin-result" hidden></div>
+      </section>
+    </main>
+
+    <script>
+      (async () => {
+        const params = new URLSearchParams(window.location.search);
+        const token = params.get('token');
+        const loadingEl = document.getElementById('checkin-loading');
+        const resultEl = document.getElementById('checkin-result');
+
+        const esc = (s) => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+        const showResult = (html, className) => {
+          loadingEl.hidden = true;
+          resultEl.hidden = false;
+          resultEl.className = 'checkin-result ' + className;
+          resultEl.innerHTML = html;
+        };
+
+        if (!token) {
+          showResult('<h2>오류</h2><p>유효하지 않은 링크입니다.</p>', 'checkin-error');
+          return;
+        }
+
+        try {
+          const resp = await fetch('/api/checkin', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token }),
+          });
+          const data = await resp.json();
+
+          if (!resp.ok || !data.ok) {
+            const msg = data.cancelled
+              ? '<h2>체크인 불가</h2><p>취소된 등록입니다.</p>'
+              : '<h2>체크인 실패</h2><p>' + esc(data.message || '알 수 없는 오류가 발생했습니다.') + '</p>';
+            showResult(msg, 'checkin-error');
+            return;
+          }
+
+          const reg = data.registration || {};
+          const time = new Date(data.checked_in_at).toLocaleString('ko-KR');
+          const info = '<div class="checkin-info">'
+            + '<p><strong>' + esc(reg.name) + '</strong></p>'
+            + (reg.affiliation ? '<p>' + esc(reg.affiliation) + '</p>' : '')
+            + (reg.position ? '<p>' + esc(reg.position) + '</p>' : '')
+            + '<p class="checkin-time">' + esc(time) + '</p>'
+            + '</div>';
+
+          if (data.already_checked_in) {
+            showResult('<h2>이미 체크인 완료</h2>' + info, 'checkin-already');
+          } else {
+            showResult('<h2>체크인 성공!</h2>' + info, 'checkin-success');
+          }
+        } catch (err) {
+          showResult('<h2>오류</h2><p>서버에 연결할 수 없습니다.</p>', 'checkin-error');
+        }
+      })();
+    </script>
+  </body>
+</html>

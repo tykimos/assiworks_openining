@@ -33,6 +33,7 @@ module.exports = async (req, res) => {
 
     const normalizedAffiliation = affiliation || company || null;
     const normalizedPosition = position || null;
+    const regToken = crypto.randomUUID();
 
     const { data: insertedRow, error } = await supabase
       .from('registrations')
@@ -44,6 +45,7 @@ module.exports = async (req, res) => {
         note: message || null,
         cancel_token: cancelToken,
         air_user_token: airUserToken,
+        reg_token: regToken,
       })
       .select('id')
       .single();

@@ -38,6 +38,7 @@
             <button type="button" class="sidebar-menu-btn is-active" data-view-target="analytics" title="대시보드">대시보드</button>
             <button type="button" class="sidebar-menu-btn" data-view-target="registrations" title="등록 조회">등록 조회</button>
             <button type="button" class="sidebar-menu-btn" data-view-target="invitations" title="초대관리">초대관리</button>
+            <button type="button" class="sidebar-menu-btn" data-view-target="checkin" title="출석체크">출석체크</button>
             <button type="button" class="sidebar-menu-btn" data-view-target="settings" title="설정">설정</button>
             <button type="button" class="sidebar-menu-btn" data-view-target="presentations" title="발표자료">발표자료</button>
           </nav>
@@ -85,6 +86,10 @@
                 <p>오늘 등록</p>
                 <strong id="stat-today">0</strong>
               </article>
+              <article class="admin-stat-card">
+                <p>출석 완료</p>
+                <strong id="stat-checkedin">0</strong>
+              </article>
             </div>
 
             <article class="admin-card">
@@ -128,12 +133,14 @@
                       <th data-sort-key="created_at" class="sortable" style="width:170px">등록일시</th>
                       <th data-sort-key="cancelled_at" class="sortable" style="width:80px">취소일시</th>
                       <th style="width:55px">상태</th>
+                      <th style="width:55px">출석</th>
+                      <th style="width:45px">QR</th>
                       <th style="width:55px">관리</th>
                     </tr>
                   </thead>
                   <tbody id="admin-rows">
                     <tr>
-                      <td colspan="10">비밀번호를 입력하고 입장해주세요.</td>
+                      <td colspan="12">비밀번호를 입력하고 입장해주세요.</td>
                     </tr>
                   </tbody>
                 </table>
@@ -285,6 +292,73 @@
             </div>
           </section>
 
+          <section id="admin-view-checkin" class="admin-view">
+            <div class="admin-stats-grid admin-stats-grid-checkin">
+              <article class="admin-stat-card">
+                <p>총 등록</p>
+                <strong id="checkin-stat-total">0</strong>
+              </article>
+              <article class="admin-stat-card">
+                <p>출석 완료</p>
+                <strong id="checkin-stat-done">0</strong>
+              </article>
+              <article class="admin-stat-card">
+                <p>미출석</p>
+                <strong id="checkin-stat-pending">0</strong>
+              </article>
+              <article class="admin-stat-card">
+                <p>출석률</p>
+                <strong id="checkin-stat-rate">0%</strong>
+              </article>
+            </div>
+
+            <article class="admin-card">
+              <h4>QR 스캐너</h4>
+              <div class="checkin-scanner-area">
+                <div id="checkin-scanner" class="checkin-scanner"></div>
+                <div class="checkin-scanner-actions">
+                  <button id="checkin-start-scan" type="button" class="primary">카메라 스캔 시작</button>
+                  <button id="checkin-stop-scan" type="button" class="secondary admin-btn-secondary" hidden>스캔 중지</button>
+                </div>
+              </div>
+              <div class="checkin-manual">
+                <input id="checkin-manual-token" type="text" placeholder="토큰을 직접 입력..." />
+                <button id="checkin-manual-btn" type="button" class="primary">체크인</button>
+              </div>
+              <div id="checkin-scan-result" class="checkin-scan-result" hidden></div>
+            </article>
+
+            <article class="admin-card">
+              <h4>출석 현황</h4>
+              <div class="admin-filters">
+                <input id="checkin-search" type="text" placeholder="이름 / 이메일 / 소속 검색" />
+                <select id="checkin-filter-status" aria-label="출석 필터">
+                  <option value="all">전체</option>
+                  <option value="checked">출석 완료</option>
+                  <option value="unchecked">미출석</option>
+                </select>
+              </div>
+              <div class="admin-table-wrap">
+                <table class="admin-table">
+                  <thead>
+                    <tr>
+                      <th style="width:70px">이름</th>
+                      <th style="width:180px">이메일</th>
+                      <th style="width:130px">소속</th>
+                      <th style="width:70px">직위</th>
+                      <th style="width:80px">출석</th>
+                      <th style="width:150px">체크인 시간</th>
+                      <th style="width:55px">QR</th>
+                    </tr>
+                  </thead>
+                  <tbody id="checkin-rows">
+                    <tr><td colspan="7">데이터를 불러오는 중...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </article>
+          </section>
+
           <section id="admin-view-settings" class="admin-view">
             <article class="admin-card">
               <h4>행사 설정</h4>
@@ -367,6 +441,8 @@
       </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>

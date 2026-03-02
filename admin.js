@@ -61,6 +61,22 @@ document.addEventListener('DOMContentLoaded', () => {
   const settingSeatCapacity = document.getElementById('setting-seat-capacity');
   const settingsStatus = document.getElementById('settings-status');
 
+  // Checkin elements
+  const checkinRowsEl = document.getElementById('checkin-rows');
+  const checkinSearchInput = document.getElementById('checkin-search');
+  const checkinFilterStatus = document.getElementById('checkin-filter-status');
+  const checkinStatTotal = document.getElementById('checkin-stat-total');
+  const checkinStatDone = document.getElementById('checkin-stat-done');
+  const checkinStatPending = document.getElementById('checkin-stat-pending');
+  const checkinStatRate = document.getElementById('checkin-stat-rate');
+  const checkinStartScan = document.getElementById('checkin-start-scan');
+  const checkinStopScan = document.getElementById('checkin-stop-scan');
+  const checkinScanResult = document.getElementById('checkin-scan-result');
+  const checkinManualToken = document.getElementById('checkin-manual-token');
+  const checkinManualBtn = document.getElementById('checkin-manual-btn');
+
+  let html5QrScanner = null;
+
   // Presentations elements
   const presListView = document.getElementById('pres-list-view');
   const presEditorView = document.getElementById('pres-editor-view');
@@ -270,10 +286,14 @@ document.addEventListener('DOMContentLoaded', () => {
       (row) => row.created_at && new Date(row.created_at).toISOString().slice(0, 10) === todayKey,
     ).length;
 
+    const checkedInCount = registrations.filter((row) => row.checked_in_at && !row.cancelled_at).length;
+
     if (statTotal) statTotal.textContent = String(total);
     if (statActive) statActive.textContent = String(active);
     if (statCancelled) statCancelled.textContent = String(cancelled);
     if (statToday) statToday.textContent = String(todayCount);
+    const statCheckedIn = document.getElementById('stat-checkedin');
+    if (statCheckedIn) statCheckedIn.textContent = String(checkedInCount);
   };
 
   const renderRecent = () => {
@@ -335,7 +355,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const renderRows = () => {
     if (!rowsEl) return;
     if (!filteredRegistrations.length) {
-      rowsEl.innerHTML = '<tr><td colspan="10">등록 데이터가 없습니다.</td></tr>';
+      rowsEl.innerHTML = '<tr><td colspan="12">등록 데이터가 없습니다.</td></tr>';
       syncSelectionUI();
       return;
     }
@@ -348,6 +368,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const note = row.note || '-';
         const rowId = String(row.id);
         const checked = selectedIds.has(rowId) ? 'checked' : '';
+        const checkedIn = Boolean(row.checked_in_at);
+        const checkinBadge = row.cancelled_at
+          ? '-'
+          : checkedIn
+            ? '<span class="checkin-badge checkin-done">출석</span>'
+            : '<span class="checkin-badge checkin-not">미출석</span>';
+        const qrBtn = row.reg_token && !row.cancelled_at
+          ? `<button type="button" class="admin-btn-edit checkin-qr-btn" data-reg-token="${escapeHtml(row.reg_token)}" data-name="${escapeHtml(row.name)}">QR</button>`
+          : '-';
         return `<tr>
           <td>
             <input type="checkbox" class="admin-row-select" data-id="${escapeHtml(rowId)}" ${checked} />
@@ -360,6 +389,8 @@ document.addEventListener('DOMContentLoaded', () => {
           <td>${escapeHtml(createdAt)}</td>
           <td>${escapeHtml(cancelledAt)}</td>
           <td>${escapeHtml(status)}</td>
+          <td>${checkinBadge}</td>
+          <td>${qrBtn}</td>
           <td><button type="button" class="admin-delete" data-id="${escapeHtml(rowId)}">삭제</button></td>
         </tr>`;
       })
@@ -501,7 +532,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const loadAllData = async () => {
     const [regResult, invResult, presResult] = await Promise.all([
       sb.from('registrations')
-        .select('id,name,email,affiliation,position,note,cancelled_at,created_at')
+        .select('id,name,email,affiliation,position,note,cancelled_at,created_at,checked_in_at,reg_token')
         .order('created_at', { ascending: false })
         .limit(200),
       sb.from('invitations')
@@ -522,6 +553,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderDashboard();
     renderInvitations();
     renderPresList();
+    renderCheckinView();
     setStatus(dashboardStatusEl, `등록 ${registrations.length}건 · 초대 ${invitations.length}건`);
   };
 
@@ -560,12 +592,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const loadRegistrations = async () => {
     const { data, error } = await sb
       .from('registrations')
-      .select('id,name,email,affiliation,position,note,cancelled_at,created_at')
+      .select('id,name,email,affiliation,position,note,cancelled_at,created_at,checked_in_at,reg_token')
       .order('created_at', { ascending: false })
       .limit(200);
     if (error) throw error;
     registrations = data || [];
     renderDashboard();
+    renderCheckinView();
     setStatus(dashboardStatusEl, `총 ${registrations.length}건을 불러왔습니다.`);
   };
 
@@ -2254,6 +2287,233 @@ document.addEventListener('DOMContentLoaded', () => {
   /* ============================================================
      Column resizing for tables
      ============================================================ */
+  /* ============================================================
+     Checkin – view rendering, scanner, QR modal
+     ============================================================ */
+
+  const getActiveRegistrations = () => registrations.filter((r) => !r.cancelled_at);
+
+  const renderCheckinStats = () => {
+    const active = getActiveRegistrations();
+    const total = active.length;
+    const done = active.filter((r) => r.checked_in_at).length;
+    const pending = total - done;
+    const rate = total ? Math.round((done / total) * 100) : 0;
+    if (checkinStatTotal) checkinStatTotal.textContent = String(total);
+    if (checkinStatDone) checkinStatDone.textContent = String(done);
+    if (checkinStatPending) checkinStatPending.textContent = String(pending);
+    if (checkinStatRate) checkinStatRate.textContent = `${rate}%`;
+  };
+
+  const renderCheckinRows = () => {
+    if (!checkinRowsEl) return;
+    const keyword = (checkinSearchInput?.value || '').trim().toLowerCase();
+    const statusVal = checkinFilterStatus?.value || 'all';
+    const active = getActiveRegistrations();
+    const filtered = active.filter((row) => {
+      const matchKw = !keyword ||
+        `${row.name || ''} ${row.email || ''} ${row.affiliation || ''}`.toLowerCase().includes(keyword);
+      const matchStatus = statusVal === 'all'
+        ? true
+        : statusVal === 'checked'
+          ? Boolean(row.checked_in_at)
+          : !row.checked_in_at;
+      return matchKw && matchStatus;
+    });
+
+    if (!filtered.length) {
+      checkinRowsEl.innerHTML = '<tr><td colspan="7">데이터가 없습니다.</td></tr>';
+      return;
+    }
+
+    checkinRowsEl.innerHTML = filtered.map((row) => {
+      const checkedIn = Boolean(row.checked_in_at);
+      const badge = checkedIn
+        ? '<span class="checkin-badge checkin-done">출석</span>'
+        : '<span class="checkin-badge checkin-not">미출석</span>';
+      const time = checkedIn ? formatDateTime(row.checked_in_at) : '-';
+      const qrBtn = row.reg_token
+        ? `<button type="button" class="admin-btn-edit checkin-qr-btn" data-reg-token="${escapeHtml(row.reg_token)}" data-name="${escapeHtml(row.name)}">QR</button>`
+        : '-';
+      return `<tr>
+        <td>${escapeHtml(row.name)}</td>
+        <td>${escapeHtml(row.email)}</td>
+        <td>${escapeHtml(row.affiliation || '-')}</td>
+        <td>${escapeHtml(row.position || '-')}</td>
+        <td>${badge}</td>
+        <td>${escapeHtml(time)}</td>
+        <td>${qrBtn}</td>
+      </tr>`;
+    }).join('');
+  };
+
+  const renderCheckinView = () => {
+    renderCheckinStats();
+    renderCheckinRows();
+  };
+
+  checkinSearchInput?.addEventListener('input', renderCheckinRows);
+  checkinFilterStatus?.addEventListener('change', renderCheckinRows);
+
+  const handleCheckin = async (token) => {
+    if (!checkinScanResult) return;
+    checkinScanResult.hidden = false;
+    checkinScanResult.className = 'checkin-scan-result';
+    checkinScanResult.innerHTML = '<p>체크인 처리 중...</p>';
+
+    try {
+      const resp = await fetch('/api/checkin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token }),
+      });
+      const data = await resp.json();
+
+      if (!resp.ok || !data.ok) {
+        checkinScanResult.classList.add('checkin-scan-error');
+        checkinScanResult.innerHTML = `<p>${escapeHtml(data.message || '체크인 실패')}</p>`;
+        return;
+      }
+
+      const reg = data.registration || {};
+      const time = new Date(data.checked_in_at).toLocaleString('ko-KR');
+
+      if (data.already_checked_in) {
+        checkinScanResult.classList.add('checkin-scan-already');
+        checkinScanResult.innerHTML = `<p><strong>이미 체크인 완료</strong></p>
+          <p>${escapeHtml(reg.name)} · ${escapeHtml(reg.affiliation || '')} · ${escapeHtml(reg.position || '')}</p>
+          <p>${time}</p>`;
+      } else {
+        checkinScanResult.classList.add('checkin-scan-success');
+        checkinScanResult.innerHTML = `<p><strong>체크인 성공!</strong></p>
+          <p>${escapeHtml(reg.name)} · ${escapeHtml(reg.affiliation || '')} · ${escapeHtml(reg.position || '')}</p>
+          <p>${time}</p>`;
+        // Update local data
+        const found = registrations.find((r) => r.reg_token === token);
+        if (found) found.checked_in_at = data.checked_in_at;
+        renderCheckinView();
+      }
+    } catch {
+      checkinScanResult.classList.add('checkin-scan-error');
+      checkinScanResult.innerHTML = '<p>서버 연결 오류</p>';
+    }
+  };
+
+  // Manual token checkin
+  checkinManualBtn?.addEventListener('click', () => {
+    const token = checkinManualToken?.value?.trim();
+    if (!token) return;
+    handleCheckin(token);
+    if (checkinManualToken) checkinManualToken.value = '';
+  });
+
+  checkinManualToken?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      checkinManualBtn?.click();
+    }
+  });
+
+  // QR camera scanner
+  const startScanner = () => {
+    if (html5QrScanner) return;
+    const scannerEl = document.getElementById('checkin-scanner');
+    if (!scannerEl) return;
+
+    html5QrScanner = new Html5Qrcode('checkin-scanner');
+    html5QrScanner.start(
+      { facingMode: 'environment' },
+      { fps: 10, qrbox: { width: 250, height: 250 } },
+      (decodedText) => {
+        // Extract token from URL or use raw text
+        let token = decodedText;
+        try {
+          const url = new URL(decodedText);
+          const t = url.searchParams.get('token');
+          if (t) token = t;
+        } catch { /* use raw text */ }
+        handleCheckin(token);
+      },
+    ).then(() => {
+      if (checkinStartScan) checkinStartScan.hidden = true;
+      if (checkinStopScan) checkinStopScan.hidden = false;
+    }).catch((err) => {
+      console.error('Scanner start error', err);
+      if (checkinScanResult) {
+        checkinScanResult.hidden = false;
+        checkinScanResult.className = 'checkin-scan-result checkin-scan-error';
+        checkinScanResult.innerHTML = '<p>카메라를 시작할 수 없습니다. 카메라 권한을 확인해주세요.</p>';
+      }
+    });
+  };
+
+  const stopScanner = () => {
+    if (!html5QrScanner) return;
+    html5QrScanner.stop().then(() => {
+      html5QrScanner.clear();
+      html5QrScanner = null;
+      if (checkinStartScan) checkinStartScan.hidden = false;
+      if (checkinStopScan) checkinStopScan.hidden = true;
+    }).catch(() => {});
+  };
+
+  checkinStartScan?.addEventListener('click', startScanner);
+  checkinStopScan?.addEventListener('click', stopScanner);
+
+  // QR modal for individual registrations
+  const showQRModal = (regToken, name) => {
+    const existing = document.getElementById('qr-modal');
+    if (existing) existing.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'qr-modal';
+    modal.className = 'admin-modal qr-modal';
+    modal.innerHTML = `
+      <div class="admin-modal-backdrop"></div>
+      <div class="admin-modal-content admin-card qr-modal-card">
+        <h4>${escapeHtml(name)} QR 코드</h4>
+        <div id="qr-modal-canvas" class="qr-modal-canvas"></div>
+        <p class="qr-modal-token">${escapeHtml(regToken)}</p>
+        <div class="inv-form-actions">
+          <button type="button" class="primary qr-modal-close">닫기</button>
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+
+    // Generate QR code
+    const checkinUrl = `${window.location.origin}/checkin.html?token=${regToken}`;
+    const canvas = document.createElement('canvas');
+    QRCode.toCanvas(canvas, checkinUrl, { width: 256, margin: 2 }, (err) => {
+      if (err) console.error('QR generation error', err);
+    });
+    document.getElementById('qr-modal-canvas')?.appendChild(canvas);
+
+    modal.querySelector('.admin-modal-backdrop')?.addEventListener('click', () => modal.remove());
+    modal.querySelector('.qr-modal-close')?.addEventListener('click', () => modal.remove());
+  };
+
+  // Delegate QR button clicks in checkin table
+  checkinRowsEl?.addEventListener('click', (event) => {
+    const qrBtn = event.target.closest('.checkin-qr-btn');
+    if (!qrBtn) return;
+    const regToken = qrBtn.dataset.regToken;
+    const name = qrBtn.dataset.name;
+    if (regToken) showQRModal(regToken, name);
+  });
+
+  // Also add QR button support in the registrations table
+  rowsEl?.addEventListener('click', (event) => {
+    const qrBtn = event.target.closest('.checkin-qr-btn');
+    if (!qrBtn) return;
+    const regToken = qrBtn.dataset.regToken;
+    const name = qrBtn.dataset.name;
+    if (regToken) showQRModal(regToken, name);
+  });
+
+  /* ============================================================
+     Column resizers
+     ============================================================ */
+
   const saveColWidths = (tableId, ths) => {
     const widths = ths.map((th) => th.offsetWidth);
     try { localStorage.setItem(`colWidths_${tableId}`, JSON.stringify(widths)); } catch {}

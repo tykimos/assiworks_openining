@@ -154,3 +154,17 @@ execute procedure public.set_updated_at();
 alter table public.presentations enable row level security;
 create policy "Full access to presentations"
   on public.presentations for all using (true) with check (true);
+
+-- ============================================================
+-- QR 코드 기반 출석 체크인: reg_token + checked_in_at
+-- ============================================================
+
+alter table public.registrations add column if not exists reg_token text;
+create unique index if not exists registrations_reg_token_key on public.registrations (reg_token);
+
+-- 기존 등록자에 대해 reg_token 일괄 생성
+update public.registrations set reg_token = gen_random_uuid()::text where reg_token is null;
+
+-- checked_in_at 컬럼 추가
+alter table public.registrations add column if not exists checked_in_at timestamptz;
+create index if not exists registrations_checked_in_at_idx on public.registrations (checked_in_at);

@@ -2425,3 +2425,223 @@ body[data-page='admin'] .admin-page {
   -webkit-text-fill-color: #636bff !important;
   color: #636bff !important;
 }
+
+/* ============================================================
+   Checkin page (checkin.html) — mobile-optimized
+   ============================================================ */
+
+.checkin-page {
+  width: min(520px, 100%);
+  margin: 0 auto;
+  padding: 2rem 1rem;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.checkin-panel {
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 32px;
+  padding: clamp(1.5rem, 4vw, 3rem);
+  box-shadow: 0 25px 60px rgba(78, 84, 130, 0.25);
+  text-align: center;
+  width: 100%;
+}
+
+.checkin-panel h1 {
+  margin: 0.3rem 0 1rem;
+}
+
+.checkin-loading p {
+  color: var(--muted);
+  font-size: 1.1rem;
+}
+
+.checkin-result h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.5rem;
+}
+
+.checkin-result p {
+  margin: 0.25rem 0;
+  color: var(--muted);
+}
+
+.checkin-info {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 12px;
+  background: rgba(17, 21, 50, 0.04);
+}
+
+.checkin-info strong {
+  font-size: 1.25rem;
+  color: var(--text);
+}
+
+.checkin-time {
+  font-size: 0.85rem;
+  margin-top: 0.5rem;
+  color: var(--muted);
+}
+
+.checkin-success h2 {
+  color: #16a34a;
+}
+
+.checkin-success {
+  border-left: 4px solid #16a34a;
+  padding-left: 1rem;
+}
+
+.checkin-already h2 {
+  color: #ca8a04;
+}
+
+.checkin-already {
+  border-left: 4px solid #ca8a04;
+  padding-left: 1rem;
+}
+
+.checkin-error h2 {
+  color: #dc2626;
+}
+
+.checkin-error {
+  border-left: 4px solid #dc2626;
+  padding-left: 1rem;
+}
+
+/* ============================================================
+   Admin checkin section
+   ============================================================ */
+
+.admin-stats-grid-checkin {
+  margin-bottom: 1rem;
+}
+
+.checkin-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.checkin-done {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.checkin-not {
+  background: #fef3c7;
+  color: #ca8a04;
+}
+
+.checkin-scanner-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.checkin-scanner {
+  width: 100%;
+  max-width: 400px;
+  min-height: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #f1f5f9;
+}
+
+.checkin-scanner video {
+  border-radius: 12px;
+}
+
+.checkin-scanner-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.checkin-manual {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.checkin-manual input {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid rgba(17, 21, 50, 0.12);
+  border-radius: 8px;
+  font-size: 0.875rem;
+}
+
+.checkin-manual .primary {
+  white-space: nowrap;
+}
+
+.checkin-scan-result {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 12px;
+  text-align: center;
+}
+
+.checkin-scan-result p {
+  margin: 0.25rem 0;
+}
+
+.checkin-scan-success {
+  background: #dcfce7;
+  border: 1px solid #86efac;
+}
+
+.checkin-scan-success strong {
+  color: #16a34a;
+}
+
+.checkin-scan-already {
+  background: #fef3c7;
+  border: 1px solid #fde68a;
+}
+
+.checkin-scan-already strong {
+  color: #ca8a04;
+}
+
+.checkin-scan-error {
+  background: #fee2e2;
+  border: 1px solid #fca5a5;
+}
+
+.checkin-scan-error p {
+  color: #dc2626;
+}
+
+/* QR Modal */
+
+.qr-modal-card {
+  text-align: center;
+  max-width: 360px;
+}
+
+.qr-modal-canvas {
+  display: flex;
+  justify-content: center;
+  margin: 1rem 0;
+}
+
+.qr-modal-canvas canvas {
+  border-radius: 8px;
+}
+
+.qr-modal-token {
+  font-family: 'Inter', monospace;
+  font-size: 0.75rem;
+  color: var(--muted);
+  word-break: break-all;
+  margin-bottom: 1rem;
+}
