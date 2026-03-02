@@ -7,7 +7,9 @@
     "vercel-build": "npm run build"
   },
   "dependencies": {
+    "@sparticuz/chromium": "^131.0.0",
     "@supabase/supabase-js": "^2.95.3",
+    "puppeteer-core": "^24.0.0",
     "resend": "^6.9.2"
   }
 }
