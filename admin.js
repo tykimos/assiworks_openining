@@ -2532,30 +2532,15 @@ document.addEventListener('DOMContentLoaded', () => {
       const tableId = table.className.replace(/\s+/g, '_');
       const saved = loadColWidths(tableId);
 
-      let widths;
       if (saved && saved.length === ths.length) {
-        // Restore user-saved widths.
-        widths = saved;
-      } else {
-        // First load: use HTML explicit widths or measure naturally.
-        const firstRow = table.querySelector('tbody tr');
-        const tds = firstRow ? Array.from(firstRow.children) : [];
-        table.style.tableLayout = 'auto';
-        table.style.width = 'auto';
-        ths.forEach((th) => { th.style.removeProperty('width'); });
-
-        widths = ths.map((th, i) => {
-          const explicit = parseInt(th.getAttribute('style')?.match(/width:\s*(\d+)/)?.[1], 10);
-          if (explicit > 0) return explicit;
-          const tdW = tds[i] ? tds[i].offsetWidth : 0;
-          return Math.max(th.offsetWidth, tdW);
-        });
+        // Restore user-saved widths with fixed layout.
+        const totalW = saved.reduce((s, w) => s + w, 0);
+        table.style.tableLayout = 'fixed';
+        table.style.width = `${totalW}px`;
+        ths.forEach((th, i) => { th.style.width = `${saved[i]}px`; });
       }
+      // Otherwise keep browser auto layout — no fixed widths applied.
 
-      const totalW = widths.reduce((s, w) => s + w, 0);
-      table.style.tableLayout = 'fixed';
-      table.style.width = `${totalW}px`;
-      ths.forEach((th, i) => { th.style.width = `${widths[i]}px`; });
       table.dataset.resizersReady = '1';
 
       // Add resizers to all columns except the last one.
@@ -2582,6 +2567,14 @@ document.addEventListener('DOMContentLoaded', () => {
         resizer.addEventListener('mousedown', (e) => {
           e.preventDefault();
           e.stopPropagation();
+          // Switch to fixed layout on first drag if still auto
+          if (table.style.tableLayout !== 'fixed') {
+            const currentWidths = ths.map((h) => h.offsetWidth);
+            const totalW = currentWidths.reduce((s, w) => s + w, 0);
+            table.style.tableLayout = 'fixed';
+            table.style.width = `${totalW}px`;
+            ths.forEach((h, idx) => { h.style.width = `${currentWidths[idx]}px`; });
+          }
           startX = e.clientX;
           startW = th.offsetWidth;
           startTableW = table.offsetWidth;
