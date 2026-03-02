@@ -162,8 +162,8 @@ create policy "Full access to presentations"
 alter table public.registrations add column if not exists reg_token text;
 create unique index if not exists registrations_reg_token_key on public.registrations (reg_token);
 
--- 기존 등록자에 대해 reg_token 일괄 생성
-update public.registrations set reg_token = gen_random_uuid()::text where reg_token is null;
+-- 기존 등록자에 대해 reg_token 일괄 생성 (6자리 영숫자)
+update public.registrations set reg_token = substr(md5(random()::text), 1, 6) where reg_token is null or length(reg_token) > 6;
 
 -- checked_in_at 컬럼 추가
 alter table public.registrations add column if not exists checked_in_at timestamptz;

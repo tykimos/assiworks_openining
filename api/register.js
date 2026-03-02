@@ -33,7 +33,8 @@ module.exports = async (req, res) => {
 
     const normalizedAffiliation = affiliation || company || null;
     const normalizedPosition = position || null;
-    const regToken = crypto.randomUUID();
+    let regToken = '';
+    for (let i = 0; i < 6; i++) regToken += chars[Math.floor(Math.random() * chars.length)];
 
     const { data: insertedRow, error } = await supabase
       .from('registrations')
