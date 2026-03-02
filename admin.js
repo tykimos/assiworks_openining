@@ -2480,13 +2480,12 @@ document.addEventListener('DOMContentLoaded', () => {
       </div>`;
     document.body.appendChild(modal);
 
-    // Generate QR code
+    // Generate QR code using qrcodejs (davidshimjs)
     const checkinUrl = `${window.location.origin}/checkin.html?token=${regToken}`;
-    const canvas = document.createElement('canvas');
-    QRCode.toCanvas(canvas, checkinUrl, { width: 256, margin: 2 }, (err) => {
-      if (err) console.error('QR generation error', err);
-    });
-    document.getElementById('qr-modal-canvas')?.appendChild(canvas);
+    const qrContainer = document.getElementById('qr-modal-canvas');
+    if (qrContainer) {
+      new QRCode(qrContainer, { text: checkinUrl, width: 256, height: 256, correctLevel: QRCode.CorrectLevel.M });
+    }
 
     modal.querySelector('.admin-modal-backdrop')?.addEventListener('click', () => modal.remove());
     modal.querySelector('.qr-modal-close')?.addEventListener('click', () => modal.remove());
