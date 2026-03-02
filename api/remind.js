@@ -28,7 +28,7 @@ module.exports = async (req, res) => {
     const supabase = getSupabaseClient();
     const { data: registration, error: findError } = await supabase
       .from('registrations')
-      .select('id,email,name,cancelled_at,reg_token')
+      .select('id,email,name,cancelled_at,reg_token,air_user_token')
       .eq('id', registrationId)
       .maybeSingle();
 
@@ -42,7 +42,10 @@ module.exports = async (req, res) => {
 
     const origin = getOrigin(req);
     const checkinUrl = `${origin.replace(/\/$/, '')}/checkin.html?token=${registration.reg_token}`;
-    await sendReminderEmail({ to: registration.email, name: registration.name, checkinUrl });
+    const airLink = registration.air_user_token
+      ? `https://assiair.vercel.app/?app_token=MjTTvj&user_token=${registration.air_user_token}`
+      : null;
+    await sendReminderEmail({ to: registration.email, name: registration.name, checkinUrl, airLink });
 
     const now = new Date().toISOString();
     const { error: updateError } = await supabase

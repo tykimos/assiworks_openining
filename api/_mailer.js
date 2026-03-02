@@ -137,27 +137,39 @@ const sendRegistrationEmail = async ({ to, name, cancelLink, airLink }) => {
   throw lastError || new Error('메일 API 호출 중 알 수 없는 오류가 발생했습니다.');
 };
 
-const buildReminderBody = ({ name, checkinUrl }) => {
+const buildReminderBody = ({ name, checkinUrl, airLink }) => {
   const safeName = name?.trim() || '게스트';
   const googleCalendarLink = buildGoogleCalendarLink();
-  return [
+  const lines = [
     `${safeName}님, AssiWorks Opening 행사를 안내드립니다.`,
     '',
     '📅 일시: 2026년 3월 3일 (화) 14:00 ~ 17:00',
     `📍 장소: ${EVENT_LOCATION}`,
     '',
-    '아래 링크에서 입장 티켓(QR 코드)을 확인하실 수 있습니다.',
+    '🎫 아래 링크에서 입장 티켓(QR 코드)을 확인하실 수 있습니다.',
     '행사 당일 이 화면을 스태프에게 보여주세요.',
     checkinUrl,
+  ];
+
+  if (airLink) {
+    lines.push(
+      '',
+      '🤖 AssiAir에서 공문 요청이나 QR 이미지를 받으실 수 있습니다.',
+      airLink,
+    );
+  }
+
+  lines.push(
     '',
-    '아래 링크를 통해 구글 캘린더에 일정을 등록하실 수 있습니다.',
+    '📆 아래 링크를 통해 구글 캘린더에 일정을 등록하실 수 있습니다.',
     googleCalendarLink,
     '',
     '감사합니다.',
-  ].join('\n');
+  );
+  return lines.join('\n');
 };
 
-const sendReminderEmail = async ({ to, name, checkinUrl }) => {
+const sendReminderEmail = async ({ to, name, checkinUrl, airLink }) => {
   const baseUrl = process.env.SEND_MAIL_BASE_URL || DEFAULT_SEND_MAIL_BASE_URL;
   const preferredSender = process.env.REGISTRATION_FROM_EMAIL || DEFAULT_SENDER_EMAIL;
   const senderCandidates = Array.from(new Set([preferredSender, DEFAULT_SENDER_EMAIL]));
@@ -168,7 +180,7 @@ const sendReminderEmail = async ({ to, name, checkinUrl }) => {
       senderEmail,
       recipientEmails: [to],
       subject: 'AssiWorks Opening 행사 안내 리마인드',
-      body: buildReminderBody({ name, checkinUrl }),
+      body: buildReminderBody({ name, checkinUrl, airLink }),
     };
 
     let lastNotFoundError = null;
