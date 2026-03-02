@@ -139,7 +139,26 @@ const sendRegistrationEmail = async ({ to, name, cancelLink, airLink }) => {
   throw lastError || new Error('메일 API 호출 중 알 수 없는 오류가 발생했습니다.');
 };
 
-const buildReminderBody = ({ name, qrDataUrl, checkinUrl }) => {
+const buildReminderTextBody = ({ name, checkinUrl }) => {
+  const safeName = name?.trim() || '게스트';
+  const googleCalendarLink = buildGoogleCalendarLink();
+  return [
+    `${safeName}님, AssiWorks Opening 행사를 안내드립니다.`,
+    '',
+    '📅 일시: 2026년 3월 3일 (화) 14:00 ~ 17:00',
+    `📍 장소: ${EVENT_LOCATION}`,
+    '',
+    '아래 링크를 행사 당일 입장 시 제시해 주세요.',
+    checkinUrl,
+    '',
+    '아래 링크를 통해 구글 캘린더에 일정을 등록하실 수 있습니다.',
+    googleCalendarLink,
+    '',
+    '감사합니다.',
+  ].join('\n');
+};
+
+const buildReminderHtmlBody = ({ name, qrDataUrl, checkinUrl }) => {
   const safeName = name?.trim() || '게스트';
   const googleCalendarLink = buildGoogleCalendarLink();
   return `<!DOCTYPE html>
@@ -171,7 +190,8 @@ const sendReminderEmail = async ({ to, name, checkinUrl }) => {
       senderEmail,
       recipientEmails: [to],
       subject: 'AssiWorks Opening 행사 안내 리마인드',
-      body: buildReminderBody({ name, qrDataUrl, checkinUrl }),
+      body: buildReminderTextBody({ name, checkinUrl }),
+      htmlBody: buildReminderHtmlBody({ name, qrDataUrl, checkinUrl }),
     };
 
     let lastNotFoundError = null;
