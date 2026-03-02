@@ -2,6 +2,14 @@ const { getSupabaseClient } = require('./_supabase');
 const { sendReminderEmail } = require('./_mailer');
 const { applyCors } = require('./_cors');
 
+const getOrigin = (req) => {
+  const host = req.headers['x-forwarded-host'] || req.headers.host || '';
+  const protocolHeader = req.headers['x-forwarded-proto'];
+  const protocol =
+    protocolHeader || (host.includes('localhost') || host.startsWith('127.') ? 'http' : 'https');
+  return `${protocol}://${host}`;
+};
+
 module.exports = async (req, res) => {
   if (applyCors(req, res)) {
     return;
@@ -20,7 +28,7 @@ module.exports = async (req, res) => {
     const supabase = getSupabaseClient();
     const { data: registration, error: findError } = await supabase
       .from('registrations')
-      .select('id,email,name,cancelled_at')
+      .select('id,email,name,cancelled_at,reg_token')
       .eq('id', registrationId)
       .maybeSingle();
 
@@ -32,7 +40,9 @@ module.exports = async (req, res) => {
       return res.status(400).json({ ok: false, message: '취소된 등록에는 리마인드를 보낼 수 없습니다.' });
     }
 
-    await sendReminderEmail({ to: registration.email, name: registration.name });
+    const origin = getOrigin(req);
+    const checkinUrl = `${origin.replace(/\/$/, '')}/checkin.html?token=${registration.reg_token}`;
+    await sendReminderEmail({ to: registration.email, name: registration.name, checkinUrl });
 
     const now = new Date().toISOString();
     const { error: updateError } = await supabase

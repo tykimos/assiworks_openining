@@ -1,3 +1,5 @@
+const QRCode = require('qrcode');
+
 const DEFAULT_SEND_MAIL_BASE_URL =
   'https://send-mail.nicedune-dfc430a8.westus2.azurecontainerapps.io';
 const DEFAULT_SENDER_EMAIL = 'se@aifactory.page';
@@ -137,24 +139,28 @@ const sendRegistrationEmail = async ({ to, name, cancelLink, airLink }) => {
   throw lastError || new Error('메일 API 호출 중 알 수 없는 오류가 발생했습니다.');
 };
 
-const buildReminderBody = ({ name }) => {
+const buildReminderBody = ({ name, qrDataUrl, checkinUrl }) => {
   const safeName = name?.trim() || '게스트';
   const googleCalendarLink = buildGoogleCalendarLink();
-  const lines = [
-    `${safeName}님, AssiWorks Opening 행사를 안내드립니다.`,
-    '',
-    '📅 일시: 2026년 3월 3일 (화) 14:00 ~ 17:00',
-    `📍 장소: ${EVENT_LOCATION}`,
-    '',
-    '아래 링크를 통해 구글 캘린더에 일정을 등록하실 수 있습니다.',
-    googleCalendarLink,
-    '',
-    '감사합니다.',
-  ];
-  return lines.join('\n');
+  return `<!DOCTYPE html>
+<html><body style="font-family:'Pretendard',sans-serif;color:#111532;line-height:1.6;max-width:560px;margin:0 auto;padding:20px;">
+<p>${safeName}님, AssiWorks Opening 행사를 안내드립니다.</p>
+<p>📅 <strong>일시:</strong> 2026년 3월 3일 (화) 14:00 ~ 17:00<br/>
+📍 <strong>장소:</strong> ${EVENT_LOCATION}</p>
+<p>아래 QR 코드를 행사 당일 입장 시 제시해 주세요.</p>
+<div style="text-align:center;margin:20px 0;">
+<img src="${qrDataUrl}" alt="체크인 QR 코드" width="200" height="200" style="border:1px solid #e5e7eb;border-radius:8px;" />
+</div>
+<p style="text-align:center;font-size:12px;color:#6b7280;">체크인 링크: <a href="${checkinUrl}">${checkinUrl}</a></p>
+<p>아래 링크를 통해 구글 캘린더에 일정을 등록하실 수 있습니다.<br/>
+<a href="${googleCalendarLink}">구글 캘린더에 추가</a></p>
+<p>감사합니다.</p>
+</body></html>`;
 };
 
-const sendReminderEmail = async ({ to, name }) => {
+const sendReminderEmail = async ({ to, name, checkinUrl }) => {
+  const qrDataUrl = await QRCode.toDataURL(checkinUrl, { width: 400, margin: 2 });
+
   const baseUrl = process.env.SEND_MAIL_BASE_URL || DEFAULT_SEND_MAIL_BASE_URL;
   const preferredSender = process.env.REGISTRATION_FROM_EMAIL || DEFAULT_SENDER_EMAIL;
   const senderCandidates = Array.from(new Set([preferredSender, DEFAULT_SENDER_EMAIL]));
@@ -165,7 +171,7 @@ const sendReminderEmail = async ({ to, name }) => {
       senderEmail,
       recipientEmails: [to],
       subject: 'AssiWorks Opening 행사 안내 리마인드',
-      body: buildReminderBody({ name }),
+      body: buildReminderBody({ name, qrDataUrl, checkinUrl }),
     };
 
     let lastNotFoundError = null;
