@@ -324,6 +324,16 @@
                 <span id="pres-save-status" class="pres-save-status"></span>
                 <button id="pres-save-btn" type="button" class="primary pres-toolbar-btn">저장</button>
                 <button id="pres-present-btn" type="button" class="admin-btn-add pres-toolbar-btn">발표보기</button>
+                <button id="pres-export-pdf-btn" type="button" class="admin-btn-edit pres-toolbar-btn">PDF</button>
+                <button id="pres-export-pptx-btn" type="button" class="admin-btn-edit pres-toolbar-btn">PPTX</button>
+              </div>
+              <div id="pres-export-progress" class="pres-export-progress" hidden>
+                <div class="pres-export-progress-inner">
+                  <div class="pres-export-progress-bar">
+                    <div id="pres-export-progress-fill" class="pres-export-progress-fill"></div>
+                  </div>
+                  <span id="pres-export-progress-text">내보내기 준비 중...</span>
+                </div>
               </div>
               <div class="pres-split-panel">
                 <div class="pres-editor-pane">
@@ -357,6 +367,9 @@
       </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase-client.js"></script>
     <script src="admin.js"></script>

@@ -1576,6 +1576,7 @@ body[data-page='admin'] .admin-page {
 
 /* Editor view */
 .pres-editor-view {
+  position: relative;
   display: flex;
   flex-direction: column;
   height: calc(100vh - 140px);
@@ -2335,4 +2336,92 @@ body[data-page='admin'] .admin-page {
   .slide-box {
     padding: 1rem 1.2rem;
   }
+}
+
+/* ---- Export progress overlay ---- */
+.pres-export-progress {
+  position: absolute;
+  inset: 0;
+  z-index: 100;
+  background: rgba(255, 255, 255, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+}
+
+.pres-export-progress-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 260px;
+}
+
+.pres-export-progress-bar {
+  width: 100%;
+  height: 8px;
+  background: #e2e4f0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.pres-export-progress-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--primary);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+#pres-export-progress-text {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+/* ---- Offscreen capture container ---- */
+.pres-export-capture {
+  position: fixed;
+  left: -9999px;
+  top: 0;
+  width: 1920px;
+  height: 1080px;
+  background:
+    radial-gradient(120% 75% at 50% 12%, rgba(209, 224, 236, 0.86) 0%, rgba(209, 224, 236, 0) 64%),
+    linear-gradient(180deg, #d9dced 0%, #d8e1ec 42%, #e5e4f0 100%);
+  overflow: hidden;
+  z-index: -1;
+}
+
+/* Override viewport-relative sizes to fixed values for offscreen capture */
+.pres-export-capture .pres-viewer-slide {
+  width: 1920px;
+  height: 1080px;
+  max-width: none;
+  max-height: none;
+  position: absolute;
+  inset: 0;
+  padding: 3rem 5rem;
+}
+
+.pres-export-capture .pres-viewer-content {
+  font-size: 1.6rem;
+  overflow: hidden;
+}
+
+.pres-export-capture .pres-viewer-content img {
+  max-height: 560px;
+}
+
+.pres-export-capture .pres-viewer-content .slide-img {
+  max-height: 720px;
+}
+
+/* html2canvas cannot render background-clip:text — use solid color fallback */
+.pres-export-capture .slide-text-gradient {
+  background: none !important;
+  -webkit-background-clip: initial !important;
+  background-clip: initial !important;
+  -webkit-text-fill-color: #636bff !important;
+  color: #636bff !important;
 }

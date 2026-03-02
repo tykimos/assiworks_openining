@@ -1687,6 +1687,533 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   /* ============================================================
+     PDF / PPTX Export
+     ============================================================ */
+
+  const presExportPdfBtn = document.getElementById('pres-export-pdf-btn');
+  const presExportPptxBtn = document.getElementById('pres-export-pptx-btn');
+  const presExportProgress = document.getElementById('pres-export-progress');
+  const presExportProgressFill = document.getElementById('pres-export-progress-fill');
+  const presExportProgressText = document.getElementById('pres-export-progress-text');
+
+  const showExportProgress = (pct, text) => {
+    if (presExportProgress) presExportProgress.removeAttribute('hidden');
+    if (presExportProgressFill) presExportProgressFill.style.width = `${pct}%`;
+    if (presExportProgressText) presExportProgressText.textContent = text;
+  };
+
+  const hideExportProgress = () => {
+    if (presExportProgress) presExportProgress.setAttribute('hidden', '');
+    if (presExportProgressFill) presExportProgressFill.style.width = '0%';
+  };
+
+  const waitForImages = (container) => {
+    const imgs = Array.from(container.querySelectorAll('img'));
+    if (!imgs.length) return Promise.resolve();
+    return Promise.all(imgs.map(img => {
+      if (img.complete && img.naturalWidth > 0) return Promise.resolve();
+      return new Promise(resolve => {
+        img.onload = resolve;
+        img.onerror = resolve;
+      });
+    }));
+  };
+
+  const captureSlides = async () => {
+    const content = expandImageRefs(presContent?.value || '');
+    const slides = splitSlides(content);
+    if (!slides.length) throw new Error('슬라이드가 없습니다.');
+
+    showExportProgress(5, '슬라이드 렌더링 준비 중...');
+
+    // Wait for web fonts
+    if (document.fonts && document.fonts.ready) {
+      await document.fonts.ready;
+    }
+
+    // Create offscreen capture container — uses .pres-viewer-slide class
+    // so all existing viewer CSS rules apply automatically
+    const wrapper = document.createElement('div');
+    wrapper.className = 'pres-export-capture';
+    document.body.appendChild(wrapper);
+
+    const canvases = [];
+
+    try {
+      for (let i = 0; i < slides.length; i++) {
+        const pct = 5 + Math.round((i / slides.length) * 80);
+        showExportProgress(pct, `슬라이드 ${i + 1} / ${slides.length} 캡처 중...`);
+
+        const { meta, html } = renderSlide(slides[i]);
+
+        // Use .pres-viewer-slide so all viewer CSS rules apply
+        const slideEl = document.createElement('div');
+        slideEl.className = 'pres-viewer-slide';
+        if (meta.layout && meta.layout !== 'default') {
+          slideEl.classList.add(`slide-layout-${meta.layout}`);
+        }
+        if (meta.class) {
+          meta.class.split(/\s+/).forEach(c => slideEl.classList.add(c));
+        }
+        if (meta.bg) {
+          slideEl.style.backgroundColor = meta.bg;
+        }
+
+        slideEl.innerHTML = `<div class="pres-viewer-content">${html}</div>`;
+
+        // Show all fragments (no step-by-step in export)
+        const frags = slideEl.querySelectorAll('.slide-frag, .slide-fade-up, .slide-scale-in');
+        frags.forEach(el => {
+          el.classList.remove('frag-hidden');
+          el.style.opacity = '1';
+          el.style.transform = 'none';
+          el.style.animation = 'none';
+        });
+
+        wrapper.innerHTML = '';
+        wrapper.appendChild(slideEl);
+
+        // Wait for images to load
+        await waitForImages(slideEl);
+
+        // Delay for layout/paint
+        await new Promise(r => setTimeout(r, 150));
+
+        // Capture with html2canvas (1920×1080, scale:1 → native resolution)
+        const canvas = await html2canvas(wrapper, {
+          scale: 1,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: null,
+          width: 1920,
+          height: 1080,
+          logging: false,
+        });
+
+        canvases.push(canvas);
+      }
+    } finally {
+      wrapper.remove();
+    }
+
+    return canvases;
+  };
+
+  const exportPDF = async () => {
+    try {
+      presExportPdfBtn.disabled = true;
+      presExportPptxBtn.disabled = true;
+
+      const canvases = await captureSlides();
+
+      showExportProgress(90, 'PDF 생성 중...');
+
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({
+        orientation: 'landscape',
+        unit: 'px',
+        format: [960, 540],
+        hotfixes: ['px_scaling'],
+      });
+
+      for (let i = 0; i < canvases.length; i++) {
+        if (i > 0) pdf.addPage([960, 540], 'landscape');
+        const imgData = canvases[i].toDataURL('image/jpeg', 0.92);
+        pdf.addImage(imgData, 'JPEG', 0, 0, 960, 540);
+      }
+
+      const title = (document.getElementById('pres-title-input')?.value || '발표자료').trim();
+      pdf.save(`${title}.pdf`);
+
+      showExportProgress(100, 'PDF 다운로드 완료!');
+      setTimeout(hideExportProgress, 1200);
+    } catch (err) {
+      console.error('PDF export failed:', err);
+      alert('PDF 내보내기에 실패했습니다: ' + err.message);
+      hideExportProgress();
+    } finally {
+      presExportPdfBtn.disabled = false;
+      presExportPptxBtn.disabled = false;
+    }
+  };
+
+  /* ---- PPTX: DOM → native PptxGenJS elements ---- */
+
+  const PPTX_W = 10;        // inches
+  const PPTX_H = 5.625;     // inches (16:9)
+  const PPTX_MX = 0.6;      // horizontal margin
+  const PPTX_MY = 0.4;      // vertical margin
+  const PPTX_CW = PPTX_W - PPTX_MX * 2; // content width
+
+  // Derive style overrides from an element's CSS classes
+  const deriveStyle = (el, base) => {
+    const s = { ...base };
+    if (!el || !el.classList) return s;
+    if (el.classList.contains('slide-text-bold')) s.bold = true;
+    if (el.classList.contains('slide-text-light')) { s.bold = false; s.fontWeight = 300; }
+    if (el.classList.contains('slide-text-xl')) s.fontSize = 32;
+    if (el.classList.contains('slide-text-xxl')) s.fontSize = 40;
+    if (el.classList.contains('slide-text-large')) s.fontSize = 22;
+    if (el.classList.contains('slide-text-small')) s.fontSize = 12;
+    if (el.classList.contains('slide-text-accent') || el.classList.contains('slide-text-gradient')) s.color = '636bff';
+    if (el.classList.contains('slide-text-orange')) s.color = 'f97316';
+    if (el.classList.contains('slide-text-white')) s.color = 'FFFFFF';
+    if (el.classList.contains('slide-text-blue')) s.color = '2563EB';
+    if (el.classList.contains('slide-text-muted')) s.color = '6a6f95';
+    if (el.classList.contains('slide-text-sub')) { s.color = '334155'; s.fontSize = s.fontSize || 14; }
+    return s;
+  };
+
+  // Walk DOM node and collect PptxGenJS text runs
+  const extractRuns = (node, inherited) => {
+    const runs = [];
+    const walk = (n, style) => {
+      if (n.nodeType === 3) {
+        const t = n.textContent;
+        if (t) runs.push({ text: t, options: { ...style } });
+      } else if (n.nodeType === 1) {
+        const tag = n.tagName.toLowerCase();
+        const s = deriveStyle(n, style);
+        if (tag === 'strong' || tag === 'b') s.bold = true;
+        if (tag === 'em' || tag === 'i') s.italic = true;
+        if (tag === 'code') { s.fontFace = 'Courier New'; s.color = '636bff'; s.fontSize = (s.fontSize || 16) * 0.88; }
+        if (tag === 'br') { runs.push({ text: '\n', options: style }); return; }
+        if (tag === 'a') { s.color = '636bff'; s.underline = { style: 'sng' }; }
+        // h1-h3 inside inline extraction → keep text with adjusted size
+        if (tag === 'h1') s.fontSize = 32;
+        if (tag === 'h2') s.fontSize = 24;
+        if (tag === 'h3') s.fontSize = 20;
+        if (tag === 'h1' || tag === 'h2' || tag === 'h3') s.bold = true;
+        for (const child of n.childNodes) walk(child, s);
+        // Add line break after block elements when extracting inline
+        if (['h1', 'h2', 'h3', 'p', 'li'].includes(tag)) {
+          runs.push({ text: '\n', options: style });
+        }
+      }
+    };
+    walk(node, inherited);
+    return runs;
+  };
+
+  // Trim leading/trailing newlines from runs
+  const trimRuns = (runs) => {
+    while (runs.length && runs[0].text === '\n') runs.shift();
+    while (runs.length && runs[runs.length - 1].text === '\n') runs.pop();
+    return runs;
+  };
+
+  // Get alignment from element classes
+  const getPptxAlign = (el, meta) => {
+    if (!el) return undefined;
+    if (el.classList?.contains('slide-text-center') || el.classList?.contains('slide-align-center')) return 'center';
+    if (el.classList?.contains('slide-align-right')) return 'right';
+    if (meta?.layout === 'center' || meta?.layout === 'cover') return 'center';
+    return undefined;
+  };
+
+  // Box fill color from classes
+  const getBoxFill = (el) => {
+    if (el.classList.contains('slide-box-blue')) return { color: 'DDE4F8' };
+    if (el.classList.contains('slide-box-gray')) return { color: 'F0F0F2' };
+    if (el.classList.contains('slide-box-purple')) return { color: 'E8E0F8' };
+    if (el.classList.contains('slide-box-green')) return { color: 'DFF5E5' };
+    if (el.classList.contains('slide-box-yellow')) return { color: 'F8F0D0' };
+    if (el.classList.contains('slide-box-dark')) return { color: '0D123F' };
+    if (el.classList.contains('slide-box-white')) return { color: 'FFFFFF' };
+    if (el.classList.contains('slide-box-gradient')) return { color: 'E8E4F8' };
+    return { color: 'F5F6FF' };
+  };
+
+  // Check if tag is inline
+  const isInlineTag = (tag) => ['strong', 'b', 'em', 'i', 'code', 'a', 'span', 'br'].includes(tag);
+
+  // Add an image element to slide
+  const addPptxImage = (slide, src, x, y, w, maxH) => {
+    if (!src) return 0;
+    const imgW = Math.min(w * 0.85, 6);
+    const imgH = Math.min(imgW * 0.6, maxH);
+    const imgX = x + (w - imgW) / 2;
+    try {
+      const prop = src.startsWith('data:') ? { data: src } : { path: src };
+      slide.addImage({ ...prop, x: imgX, y, w: imgW, h: imgH, sizing: { type: 'contain', w: imgW, h: imgH } });
+    } catch (_) { /* skip broken images */ }
+    return imgH + 0.1;
+  };
+
+  // Process container's childNodes, handling both text nodes and elements.
+  // Returns the Y position after all content.
+  const processContainer = (slide, container, x, y, w, parentStyle, meta) => {
+    let curY = y;
+    const style = deriveStyle(container, parentStyle);
+    const align = getPptxAlign(container, meta);
+    let inlineBuf = [];
+
+    // Flush accumulated inline/text nodes as a text box
+    const flush = () => {
+      if (!inlineBuf.length) return;
+      const runs = [];
+      for (const n of inlineBuf) {
+        runs.push(...extractRuns(n, { ...style, fontSize: style.fontSize || 16 }));
+      }
+      inlineBuf = [];
+      trimRuns(runs);
+      if (!runs.some(r => r.text.trim())) return;
+      const textLen = runs.reduce((s, r) => s + (r.text || '').length, 0);
+      const lines = Math.max(Math.ceil(textLen / 70), 1);
+      const h = Math.max(lines * 0.28, 0.32);
+      slide.addText(runs, { x, y: curY, w, h, valign: 'top', align, paraSpaceAfter: 4 });
+      curY += h + 0.04;
+    };
+
+    for (const node of container.childNodes) {
+      // Text node → buffer
+      if (node.nodeType === 3) {
+        if (node.textContent.trim()) inlineBuf.push(node);
+        continue;
+      }
+      if (node.nodeType !== 1) continue;
+
+      const el = node;
+      const tag = el.tagName.toLowerCase();
+
+      // Inline elements → buffer
+      if (isInlineTag(tag)) {
+        inlineBuf.push(el);
+        continue;
+      }
+
+      // Block element → flush inline buffer first
+      flush();
+
+      // Spacers
+      if (el.classList.contains('slide-spacer-xl')) { curY += 0.45; continue; }
+      if (el.classList.contains('slide-spacer-lg')) { curY += 0.28; continue; }
+      if (el.classList.contains('slide-spacer')) { curY += 0.13; continue; }
+      if (el.classList.contains('slide-spacer-sm')) { curY += 0.06; continue; }
+
+      // Images
+      if (tag === 'img') {
+        curY += addPptxImage(slide, el.getAttribute('src'), x, curY, w, PPTX_H - curY - 0.3);
+        continue;
+      }
+      if (tag === 'p' && el.querySelector('img') && !el.textContent.trim()) {
+        const img = el.querySelector('img');
+        curY += addPptxImage(slide, img?.getAttribute('src'), x, curY, w, PPTX_H - curY - 0.3);
+        continue;
+      }
+
+      // Images row
+      if (el.classList.contains('slide-images-row')) {
+        const imgs = Array.from(el.querySelectorAll('img'));
+        const perW = (w - 0.3) / Math.max(imgs.length, 1);
+        const imgH = Math.min(perW * 0.6, PPTX_H - curY - 0.3);
+        imgs.forEach((img, idx) => {
+          const src = img.getAttribute('src');
+          if (!src) return;
+          const prop = src.startsWith('data:') ? { data: src } : { path: src };
+          try { slide.addImage({ ...prop, x: x + idx * (perW + 0.15), y: curY, w: perW, h: imgH, sizing: { type: 'contain', w: perW, h: imgH } }); } catch (_) {}
+        });
+        curY += imgH + 0.1;
+        continue;
+      }
+
+      // Columns layout
+      if (el.classList.contains('slide-cols') || el.classList.contains('slide-cols-3')) {
+        const cols = Array.from(el.children);
+        const numCols = el.classList.contains('slide-cols-3') ? 3 : 2;
+        const styleAttr = el.getAttribute('style') || '';
+        let colWidths;
+        const ratioMatch = styleAttr.match(/grid-template-columns:\s*(\d+)fr\s+(\d+)fr/);
+        if (ratioMatch && numCols === 2) {
+          const total = parseInt(ratioMatch[1]) + parseInt(ratioMatch[2]);
+          const gap = 0.25;
+          colWidths = [(w - gap) * parseInt(ratioMatch[1]) / total, (w - gap) * parseInt(ratioMatch[2]) / total];
+        } else {
+          const gap = 0.25;
+          const cw = (w - gap * (numCols - 1)) / numCols;
+          colWidths = Array(numCols).fill(cw);
+        }
+        let maxColH = 0;
+        let colX = x;
+        cols.forEach((col, idx) => {
+          const cw = colWidths[Math.min(idx, colWidths.length - 1)];
+          const colEndY = processContainer(slide, col, colX, curY, cw, style, meta);
+          maxColH = Math.max(maxColH, colEndY - curY);
+          colX += cw + 0.25;
+        });
+        curY += maxColH + 0.1;
+        continue;
+      }
+
+      // Box — estimate height, add shape first, then content once
+      if (el.classList.contains('slide-box')) {
+        const fill = getBoxFill(el);
+        const pad = 0.18;
+        const dark = el.classList.contains('slide-box-dark');
+        const boxStyle = { ...style, color: dark ? 'FFFFFF' : style.color };
+        // Estimate height from text content
+        const textLen = (el.textContent || '').length;
+        const childCount = el.querySelectorAll('h1,h2,h3,p,li,div').length;
+        const estH = Math.max(childCount * 0.35 + 0.3, Math.ceil(textLen / 80) * 0.28 + 0.3, 0.5);
+        // Add shape background first (renders behind text)
+        slide.addShape('roundRect', { x, y: curY, w, h: estH, fill, rectRadius: 0.12 });
+        // Process content once on top of shape
+        const endY = processContainer(slide, el, x + pad, curY + pad, w - pad * 2, boxStyle, meta);
+        const actualH = Math.max(endY - curY + pad, estH);
+        curY += actualH + 0.1;
+        continue;
+      }
+
+      // Alignment wrapper divs
+      if (el.classList.contains('slide-align-center') || el.classList.contains('slide-align-bottom') || el.classList.contains('slide-align-right')) {
+        curY = processContainer(slide, el, x, curY, w, style, meta);
+        continue;
+      }
+
+      // Headers
+      if (tag === 'h1') {
+        const runs = extractRuns(el, { ...style, fontSize: 32, bold: true });
+        trimRuns(runs);
+        slide.addText(runs, { x, y: curY, w, h: 0.65, valign: 'middle', align });
+        curY += 0.7;
+        continue;
+      }
+      if (tag === 'h2') {
+        const runs = extractRuns(el, { ...style, fontSize: 24, bold: true });
+        trimRuns(runs);
+        slide.addText(runs, { x, y: curY, w, h: 0.5, valign: 'middle', align });
+        curY += 0.55;
+        continue;
+      }
+      if (tag === 'h3') {
+        const runs = extractRuns(el, { ...style, fontSize: 20, bold: true });
+        trimRuns(runs);
+        slide.addText(runs, { x, y: curY, w, h: 0.42, valign: 'middle', align });
+        curY += 0.47;
+        continue;
+      }
+
+      // Lists
+      if (tag === 'ul' || tag === 'ol') {
+        Array.from(el.querySelectorAll(':scope > li')).forEach(li => {
+          const runs = extractRuns(li, { ...style, fontSize: style.fontSize || 16 });
+          trimRuns(runs);
+          if (runs.some(r => r.text.trim())) {
+            slide.addText(runs, { x, y: curY, w, h: 0.32, valign: 'middle', align, bullet: tag === 'ul' ? { type: 'bullet' } : { type: 'number' }, paraSpaceAfter: 3 });
+            curY += 0.32;
+          }
+        });
+        curY += 0.04;
+        continue;
+      }
+
+      // Preformatted code
+      if (tag === 'pre') {
+        const code = el.textContent || '';
+        slide.addText([{ text: code, options: { ...style, fontSize: 11, fontFace: 'Courier New', color: '1a1f4b' } }], {
+          x, y: curY, w, h: Math.min(code.split('\n').length * 0.2 + 0.3, 2.5), fill: { color: 'F5F6FF' }, valign: 'top',
+        });
+        curY += Math.min(code.split('\n').length * 0.2 + 0.35, 2.5);
+        continue;
+      }
+
+      // Horizontal rule
+      if (tag === 'hr') {
+        slide.addShape('line', { x, y: curY + 0.08, w, h: 0, line: { color: 'DDDDDD', width: 1 } });
+        curY += 0.2;
+        continue;
+      }
+
+      // Paragraph
+      if (tag === 'p') {
+        // Check for image-only paragraph
+        const img = el.querySelector('img');
+        if (img && !el.textContent.trim()) {
+          curY += addPptxImage(slide, img.getAttribute('src'), x, curY, w, PPTX_H - curY - 0.3);
+          continue;
+        }
+        const runs = extractRuns(el, { ...style, fontSize: style.fontSize || 16 });
+        trimRuns(runs);
+        if (runs.some(r => r.text.trim())) {
+          const lines = Math.max(Math.ceil((el.textContent || '').length / 70), 1);
+          const h = Math.max(lines * 0.28, 0.32);
+          slide.addText(runs, { x, y: curY, w, h, valign: 'top', align, paraSpaceAfter: 5 });
+          curY += h + 0.04;
+        }
+        continue;
+      }
+
+      // Generic div — recurse (handles col wrappers, style wrappers, etc.)
+      if (tag === 'div') {
+        curY = processContainer(slide, el, x, curY, w, style, meta);
+        continue;
+      }
+    }
+
+    // Flush remaining inline content
+    flush();
+    return curY;
+  };
+
+  const exportPPTX = async () => {
+    try {
+      presExportPdfBtn.disabled = true;
+      presExportPptxBtn.disabled = true;
+
+      showExportProgress(10, 'PPTX 생성 중...');
+
+      const content = expandImageRefs(presContent?.value || '');
+      const slides = splitSlides(content);
+      if (!slides.length) throw new Error('슬라이드가 없습니다.');
+
+      const pptx = new PptxGenJS();
+      pptx.defineLayout({ name: 'CUSTOM', width: PPTX_W, height: PPTX_H });
+      pptx.layout = 'CUSTOM';
+
+      for (let i = 0; i < slides.length; i++) {
+        showExportProgress(10 + Math.round((i / slides.length) * 80), `슬라이드 ${i + 1} / ${slides.length} 변환 중...`);
+
+        const { meta, html } = renderSlide(slides[i]);
+        const pptxSlide = pptx.addSlide();
+
+        // Background
+        const isDark = meta.class?.includes('slide-dark');
+        if (meta.bg) {
+          pptxSlide.background = { color: meta.bg.replace('#', '') };
+        } else if (isDark) {
+          pptxSlide.background = { color: '0D123F' };
+        }
+
+        const defaultColor = isDark ? 'FFFFFF' : '1a1f4b';
+        const defaultStyle = { fontFace: 'Pretendard', color: defaultColor, fontSize: 16 };
+
+        // Parse rendered HTML into a temp DOM
+        const temp = document.createElement('div');
+        temp.innerHTML = html;
+
+        // Convert DOM to native PPTX elements
+        processContainer(pptxSlide, temp, PPTX_MX, PPTX_MY, PPTX_CW, defaultStyle, meta);
+      }
+
+      const title = (document.getElementById('pres-title-input')?.value || '발표자료').trim();
+      await pptx.writeFile({ fileName: `${title}.pptx` });
+
+      showExportProgress(100, 'PPTX 다운로드 완료!');
+      setTimeout(hideExportProgress, 1200);
+    } catch (err) {
+      console.error('PPTX export failed:', err);
+      alert('PPTX 내보내기에 실패했습니다: ' + err.message);
+      hideExportProgress();
+    } finally {
+      presExportPdfBtn.disabled = false;
+      presExportPptxBtn.disabled = false;
+    }
+  };
+
+  presExportPdfBtn?.addEventListener('click', exportPDF);
+  presExportPptxBtn?.addEventListener('click', exportPPTX);
+
+  /* ============================================================
      Settings – load & save
      ============================================================ */
 
